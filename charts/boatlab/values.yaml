@@ -56,11 +56,13 @@ migration:
   activeDeadlineSeconds: 300
   hook: true
   hookDeletePolicy: BeforeHookCreation,HookSucceeded
+  syncWave: "-1"
 
 postgresql:
   enabled: true
   name: boatlab-postgresql
   secretName: boatlab-backend-db
+  syncWave: "-2"
   image:
     repository: postgres
     tag: 16-alpine

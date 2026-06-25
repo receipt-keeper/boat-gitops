@@ -7,6 +7,9 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ include "boatlab.postgresqlName" . }}
     {{- include "boatlab.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: {{ .Values.postgresql.syncWave | quote }}
 spec:
   serviceName: {{ include "boatlab.postgresqlName" . }}
   replicas: 1
@@ -56,6 +59,11 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
+      {{- if not .Values.postgresql.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
   {{- if .Values.postgresql.persistence.enabled }}
   volumeClaimTemplates:
     - metadata:

@@ -7,6 +7,9 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ include "boatlab.postgresqlName" . }}
     {{- include "boatlab.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: {{ .Values.postgresql.syncWave | quote }}
 spec:
   type: {{ .Values.postgresql.service.type }}
   selector:

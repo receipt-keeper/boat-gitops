@@ -72,8 +72,10 @@ Argo CD는 환경별 Application을 통해 같은 chart를 서로 다른 values 
 
 ## Migration Strategy
 
-Alembic은 `boatlab-backend-migrate` Job에서 실행한다. Job은 Argo CD `PreSync`
-hook이며 애플리케이션 Deployment와 같은 backend image tag를 사용한다.
+Alembic은 `boatlab-backend-migrate` Job에서 실행한다. PostgreSQL Service와
+StatefulSet은 Argo CD `PreSync` wave `-2`, migration Job은 `PreSync` wave `-1`로
+렌더링한다. 새 namespace의 첫 sync에서도 DB가 먼저 생성된 뒤 migration이 실행된다.
+migration Job은 애플리케이션 Deployment와 같은 backend image tag를 사용한다.
 
 이 방식은 다음 의도를 가진다.
 

@@ -11,7 +11,7 @@ metadata:
     {{- if .Values.migration.hook }}
     argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/hook-delete-policy: {{ .Values.migration.hookDeletePolicy }}
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: {{ .Values.migration.syncWave | quote }}
     {{- end }}
 spec:
   backoffLimit: {{ .Values.migration.backoffLimit }}
