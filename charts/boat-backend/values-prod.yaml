@@ -1,0 +1,39 @@
+environment: prod
+
+namespace:
+  name: boatlab-prod
+
+image:
+  tag: sha-14dc9e7
+
+backend:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+postgresql:
+  persistence:
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+ingress:
+  hosts:
+    - host: boat.luigi99.cloud
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: boatlab-prod-boat-backend-tls
+      hosts:
+        - boat.luigi99.cloud

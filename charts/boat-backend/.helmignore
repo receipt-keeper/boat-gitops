@@ -1,0 +1,6 @@
+.DS_Store
+.git/
+.github/
+*.secret.yaml
+*.secrets.yaml
+firebase-*.json

@@ -1,0 +1,64 @@
+{{- if .Values.migration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "boat-backend.migrationName" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: {{ include "boat-backend.migrationName" . }}
+    {{- include "boat-backend.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.migration.hook }}
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: {{ .Values.migration.hookDeletePolicy }}
+    argocd.argoproj.io/sync-wave: "-1"
+    {{- end }}
+spec:
+  backoffLimit: {{ .Values.migration.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.migration.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "boat-backend.migrationName" . }}
+        {{- include "boat-backend.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      containers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.backend.appSecretName }}
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              python - <<'PY'
+              import asyncio
+              import os
+              import sys
+
+              import asyncpg
+
+              async def main() -> None:
+                  database_url = os.environ["DATABASE_URL"].replace("postgresql+asyncpg://", "postgresql://", 1)
+                  last_error: BaseException | None = None
+                  for _ in range(60):
+                      try:
+                          conn = await asyncpg.connect(database_url)
+                          await conn.close()
+                          return
+                      except Exception as exc:  # noqa: BLE001
+                          last_error = exc
+                          await asyncio.sleep(2)
+                  print(f"database not ready: {last_error}", file=sys.stderr)
+                  raise SystemExit(1)
+
+              asyncio.run(main())
+              PY
+              alembic upgrade head
+{{- end }}

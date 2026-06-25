@@ -1,0 +1,19 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "boat-backend.postgresqlName" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: {{ include "boat-backend.postgresqlName" . }}
+    {{- include "boat-backend.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.postgresql.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ include "boat-backend.postgresqlName" . }}
+  ports:
+    - name: postgresql
+      port: {{ .Values.postgresql.service.port }}
+      targetPort: postgresql
+      protocol: TCP
+{{- end }}

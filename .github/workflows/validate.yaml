@@ -1,0 +1,42 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.18.4
+
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.32.6
+
+      - name: Lint dev chart
+        run: helm lint charts/boat-backend -f charts/boat-backend/values-dev.yaml
+
+      - name: Lint prod chart
+        run: helm lint charts/boat-backend -f charts/boat-backend/values-prod.yaml
+
+      - name: Render dev chart
+        run: helm template boat-backend charts/boat-backend -f charts/boat-backend/values-dev.yaml > /tmp/boat-dev.yaml
+
+      - name: Render prod chart
+        run: helm template boat-backend charts/boat-backend -f charts/boat-backend/values-prod.yaml > /tmp/boat-prod.yaml
+
+      - name: Validate rendered Kubernetes manifests
+        run: |
+          kubectl apply --dry-run=client --validate=false -f /tmp/boat-dev.yaml
+          kubectl apply --dry-run=client --validate=false -f /tmp/boat-prod.yaml
+          kubectl apply --dry-run=client --validate=false -f argocd/applications
