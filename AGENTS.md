@@ -12,14 +12,20 @@ Language: Korean
 ## Layout
 
 ```text
+ARCHITECTURE.md             # 배포 구조와 운영 책임
+CONTRIBUTING.md             # 브랜치, 커밋, PR, 검증 규칙
 argocd/applications/          # Argo CD Application manifests
 charts/boatlab/          # Boatlab backend Helm chart
+.github/PULL_REQUEST_TEMPLATE.md
 ```
 
 ## Rules
 
 - Kubernetes 리소스는 Helm template로 작성한다.
 - dev/prod 차이는 template 분기가 아니라 values 파일로 표현한다.
+- 브랜치명은 `feat/...`, `fix/...`, `docs/...`, `chore/...`, `ci/...`,
+  `hotfix/...`, `release/...` 같은 작업 유형 prefix와 영문 kebab-case를 쓴다.
+- 커밋과 PR 제목은 Conventional Commits 형식을 쓴다.
 - Secret 원문, `.env`, Firebase service account JSON, GHCR token은 커밋하지 않는다.
 - `boatlab-backend-app`, `boatlab-backend-db`, `boatlab-firebase`, `ghcr-secret`은 외부에서
   미리 주입되는 입력으로 본다.

@@ -6,7 +6,10 @@ Boatlab backend GitOps repository for Argo CD.
 
 ```text
 .
+|-- ARCHITECTURE.md                 # deployment model and resource ownership
+|-- CONTRIBUTING.md                 # branch, commit, PR, validation rules
 |-- argocd/applications/          # Argo CD Application manifests
+|-- .github/PULL_REQUEST_TEMPLATE.md
 `-- charts/boatlab/          # Single Helm chart for dev and prod
     |-- values-dev.yaml
     `-- values-prod.yaml
@@ -14,6 +17,13 @@ Boatlab backend GitOps repository for Argo CD.
 
 The chart keeps one deployment template and separates environments through Helm
 values. Secrets are external inputs and are not committed to this repository.
+
+Start with:
+
+- `ARCHITECTURE.md` for deployment design, resource ownership, migration, and
+  rollback policy.
+- `CONTRIBUTING.md` for branch names, commit messages, PR requirements, and
+  validation commands.
 
 ## Environments
 
