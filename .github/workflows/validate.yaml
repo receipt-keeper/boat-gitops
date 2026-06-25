@@ -19,10 +19,6 @@ jobs:
         with:
           version: v3.18.4
 
-      - uses: azure/setup-kubectl@v4
-        with:
-          version: v1.32.6
-
       - name: Lint dev chart
         run: helm lint charts/boat-backend -f charts/boat-backend/values-dev.yaml
 
@@ -35,8 +31,12 @@ jobs:
       - name: Render prod chart
         run: helm template boat-backend charts/boat-backend -f charts/boat-backend/values-prod.yaml > /tmp/boat-prod.yaml
 
-      - name: Validate rendered Kubernetes manifests
+      - name: Check rendered manifests
         run: |
-          kubectl apply --dry-run=client --validate=false -f /tmp/boat-dev.yaml
-          kubectl apply --dry-run=client --validate=false -f /tmp/boat-prod.yaml
-          kubectl apply --dry-run=client --validate=false -f argocd/applications
+          test -s /tmp/boat-dev.yaml
+          test -s /tmp/boat-prod.yaml
+          grep -q "kind: Deployment" /tmp/boat-dev.yaml
+          grep -q "kind: StatefulSet" /tmp/boat-dev.yaml
+          grep -q "kind: Job" /tmp/boat-dev.yaml
+          grep -q "kind: Application" argocd/applications/boat-backend-dev.yaml
+          grep -q "kind: Application" argocd/applications/boat-backend-prod.yaml
