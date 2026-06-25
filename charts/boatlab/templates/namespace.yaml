@@ -5,5 +5,5 @@ metadata:
   name: {{ .Values.namespace.name }}
   labels:
     kubernetes.io/metadata.name: {{ .Values.namespace.name }}
-    {{- include "boat-backend.labels" . | nindent 4 }}
+    {{- include "boatlab.labels" . | nindent 4 }}
 {{- end }}

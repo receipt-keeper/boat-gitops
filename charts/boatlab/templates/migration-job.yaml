@@ -2,11 +2,11 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "boat-backend.migrationName" . }}
+  name: {{ include "boatlab.migrationName" . }}
   namespace: {{ .Values.namespace.name }}
   labels:
-    app.kubernetes.io/name: {{ include "boat-backend.migrationName" . }}
-    {{- include "boat-backend.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "boatlab.migrationName" . }}
+    {{- include "boatlab.labels" . | nindent 4 }}
   annotations:
     {{- if .Values.migration.hook }}
     argocd.argoproj.io/hook: PreSync
@@ -19,8 +19,8 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "boat-backend.migrationName" . }}
-        {{- include "boat-backend.labels" . | nindent 8 }}
+        app.kubernetes.io/name: {{ include "boatlab.migrationName" . }}
+        {{- include "boatlab.labels" . | nindent 8 }}
     spec:
       restartPolicy: Never
       imagePullSecrets:

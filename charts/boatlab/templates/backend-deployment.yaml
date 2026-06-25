@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "boat-backend.backendName" . }}
+  name: {{ include "boatlab.backendName" . }}
   namespace: {{ .Values.namespace.name }}
   labels:
-    app.kubernetes.io/name: {{ include "boat-backend.backendName" . }}
-    {{- include "boat-backend.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "boatlab.backendName" . }}
+    {{- include "boatlab.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.backend.replicas }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "boat-backend.backendName" . }}
+      app.kubernetes.io/name: {{ include "boatlab.backendName" . }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -19,8 +19,8 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "boat-backend.backendName" . }}
-        {{- include "boat-backend.labels" . | nindent 8 }}
+        app.kubernetes.io/name: {{ include "boatlab.backendName" . }}
+        {{- include "boatlab.labels" . | nindent 8 }}
       {{- with .Values.backend.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}

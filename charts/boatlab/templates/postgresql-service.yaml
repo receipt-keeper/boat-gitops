@@ -2,15 +2,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "boat-backend.postgresqlName" . }}
+  name: {{ include "boatlab.postgresqlName" . }}
   namespace: {{ .Values.namespace.name }}
   labels:
-    app.kubernetes.io/name: {{ include "boat-backend.postgresqlName" . }}
-    {{- include "boat-backend.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "boatlab.postgresqlName" . }}
+    {{- include "boatlab.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.postgresql.service.type }}
   selector:
-    app.kubernetes.io/name: {{ include "boat-backend.postgresqlName" . }}
+    app.kubernetes.io/name: {{ include "boatlab.postgresqlName" . }}
   ports:
     - name: postgresql
       port: {{ .Values.postgresql.service.port }}

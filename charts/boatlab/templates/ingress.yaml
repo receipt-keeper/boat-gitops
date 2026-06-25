@@ -5,8 +5,8 @@ metadata:
   name: {{ .Values.ingress.name }}
   namespace: {{ .Values.namespace.name }}
   labels:
-    app.kubernetes.io/name: {{ include "boat-backend.backendName" . }}
-    {{- include "boat-backend.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ include "boatlab.backendName" . }}
+    {{- include "boatlab.labels" . | nindent 4 }}
   annotations:
     {{- toYaml .Values.ingress.annotations | nindent 4 }}
 spec:

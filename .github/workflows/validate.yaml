@@ -20,23 +20,23 @@ jobs:
           version: v3.18.4
 
       - name: Lint dev chart
-        run: helm lint charts/boat-backend -f charts/boat-backend/values-dev.yaml
+        run: helm lint charts/boatlab -f charts/boatlab/values-dev.yaml
 
       - name: Lint prod chart
-        run: helm lint charts/boat-backend -f charts/boat-backend/values-prod.yaml
+        run: helm lint charts/boatlab -f charts/boatlab/values-prod.yaml
 
       - name: Render dev chart
-        run: helm template boat-backend charts/boat-backend -f charts/boat-backend/values-dev.yaml > /tmp/boat-dev.yaml
+        run: helm template boatlab charts/boatlab -f charts/boatlab/values-dev.yaml > /tmp/boatlab-dev.yaml
 
       - name: Render prod chart
-        run: helm template boat-backend charts/boat-backend -f charts/boat-backend/values-prod.yaml > /tmp/boat-prod.yaml
+        run: helm template boatlab charts/boatlab -f charts/boatlab/values-prod.yaml > /tmp/boatlab-prod.yaml
 
       - name: Check rendered manifests
         run: |
-          test -s /tmp/boat-dev.yaml
-          test -s /tmp/boat-prod.yaml
-          grep -q "kind: Deployment" /tmp/boat-dev.yaml
-          grep -q "kind: StatefulSet" /tmp/boat-dev.yaml
-          grep -q "kind: Job" /tmp/boat-dev.yaml
-          grep -q "kind: Application" argocd/applications/boat-backend-dev.yaml
-          grep -q "kind: Application" argocd/applications/boat-backend-prod.yaml
+          test -s /tmp/boatlab-dev.yaml
+          test -s /tmp/boatlab-prod.yaml
+          grep -q "kind: Deployment" /tmp/boatlab-dev.yaml
+          grep -q "kind: StatefulSet" /tmp/boatlab-dev.yaml
+          grep -q "kind: Job" /tmp/boatlab-dev.yaml
+          grep -q "kind: Application" argocd/applications/boatlab-dev.yaml
+          grep -q "kind: Application" argocd/applications/boatlab-prod.yaml

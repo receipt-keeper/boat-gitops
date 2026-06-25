@@ -1,20 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: boat-backend-dev
+  name: boatlab-dev
   namespace: argocd
   labels:
-    app.kubernetes.io/name: boat-backend
-    app.kubernetes.io/part-of: boat
+    app.kubernetes.io/name: boatlab-backend
+    app.kubernetes.io/part-of: boatlab
     app.kubernetes.io/environment: dev
 spec:
   project: default
   source:
     repoURL: https://github.com/receipt-keeper/boat-gitops.git
     targetRevision: main
-    path: charts/boat-backend
+    path: charts/boatlab
     helm:
-      releaseName: boat-backend
+      releaseName: boatlab
       valueFiles:
         - values-dev.yaml
   destination:

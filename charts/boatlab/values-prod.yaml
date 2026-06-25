@@ -29,11 +29,11 @@ postgresql:
 
 ingress:
   hosts:
-    - host: boat.luigi99.cloud
+    - host: boatlab.luigi99.cloud
       paths:
         - path: /
           pathType: Prefix
   tls:
-    - secretName: boatlab-prod-boat-backend-tls
+    - secretName: boatlab-prod-tls
       hosts:
-        - boat.luigi99.cloud
+        - boatlab.luigi99.cloud

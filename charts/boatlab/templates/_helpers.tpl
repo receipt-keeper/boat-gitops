@@ -1,4 +1,4 @@
-{{- define "boat-backend.labels" -}}
+{{- define "boatlab.labels" -}}
 helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/instance: {{ .Release.Name }}
@@ -8,18 +8,18 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/environment: {{ .Values.environment | quote }}
 {{- end }}
 
-{{- define "boat-backend.selectorLabels" -}}
+{{- define "boatlab.selectorLabels" -}}
 app.kubernetes.io/name: {{ .name | quote }}
 {{- end }}
 
-{{- define "boat-backend.backendName" -}}
+{{- define "boatlab.backendName" -}}
 {{- .Values.backend.name -}}
 {{- end }}
 
-{{- define "boat-backend.postgresqlName" -}}
+{{- define "boatlab.postgresqlName" -}}
 {{- .Values.postgresql.name -}}
 {{- end }}
 
-{{- define "boat-backend.migrationName" -}}
+{{- define "boatlab.migrationName" -}}
 {{- .Values.migration.name -}}
 {{- end }}

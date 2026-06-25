@@ -20,6 +20,6 @@ ingress:
         - path: /
           pathType: Prefix
   tls:
-    - secretName: boatlab-dev-boat-backend-tls
+    - secretName: boatlab-dev-tls
       hosts:
         - boatlab-dev.luigi99.cloud
