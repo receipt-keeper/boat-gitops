@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: boatlab-dev
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: boatlab-backend
+    app.kubernetes.io/part-of: boatlab
+    app.kubernetes.io/environment: dev
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/receipt-keeper/boat-gitops.git
+    targetRevision: main
+    path: charts/boatlab
+    helm:
+      releaseName: boatlab
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: boatlab-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

@@ -1,0 +1,105 @@
+environment: dev
+
+namespace:
+  create: true
+  name: boatlab-dev
+
+commonLabels:
+  app.kubernetes.io/part-of: boatlab
+
+image:
+  repository: ghcr.io/receipt-keeper/boat-backend
+  tag: sha-14dc9e7
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: ghcr-secret
+
+backend:
+  name: boatlab-backend
+  replicas: 1
+  appSecretName: boatlab-backend-app
+  firebaseSecretName: boatlab-firebase
+  firebaseMountPath: /var/run/secrets/boatlab-firebase
+  containerPort: 8000
+  service:
+    type: ClusterIP
+    port: 80
+  strategy:
+    maxSurge: 1
+    maxUnavailable: 0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  readinessProbe:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 6
+  livenessProbe:
+    path: /health
+    initialDelaySeconds: 20
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3
+  podAnnotations: {}
+
+migration:
+  enabled: true
+  name: boatlab-backend-migrate
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+  hook: true
+  hookDeletePolicy: BeforeHookCreation,HookSucceeded
+  syncWave: "-1"
+
+postgresql:
+  enabled: true
+  name: boatlab-postgresql
+  secretName: boatlab-backend-db
+  syncWave: "-2"
+  image:
+    repository: postgres
+    tag: 16-alpine
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 5432
+  pgData: /var/lib/postgresql/data/pgdata
+  persistence:
+    enabled: true
+    storageClassName: longhorn
+    size: 5Gi
+    accessModes:
+      - ReadWriteOnce
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+ingress:
+  enabled: true
+  name: boatlab-backend
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: 12m
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: boatlab-dev.luigi99.cloud
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: boatlab-dev-tls
+      hosts:
+        - boatlab-dev.luigi99.cloud

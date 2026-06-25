@@ -1,0 +1,42 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.18.4
+
+      - name: Lint dev chart
+        run: helm lint charts/boatlab -f charts/boatlab/values-dev.yaml
+
+      - name: Lint prod chart
+        run: helm lint charts/boatlab -f charts/boatlab/values-prod.yaml
+
+      - name: Render dev chart
+        run: helm template boatlab charts/boatlab -f charts/boatlab/values-dev.yaml > /tmp/boatlab-dev.yaml
+
+      - name: Render prod chart
+        run: helm template boatlab charts/boatlab -f charts/boatlab/values-prod.yaml > /tmp/boatlab-prod.yaml
+
+      - name: Check rendered manifests
+        run: |
+          test -s /tmp/boatlab-dev.yaml
+          test -s /tmp/boatlab-prod.yaml
+          grep -q "kind: Deployment" /tmp/boatlab-dev.yaml
+          grep -q "kind: StatefulSet" /tmp/boatlab-dev.yaml
+          grep -q "kind: Job" /tmp/boatlab-dev.yaml
+          grep -q "kind: Application" argocd/applications/boatlab-dev.yaml
+          grep -q "kind: Application" argocd/applications/boatlab-prod.yaml

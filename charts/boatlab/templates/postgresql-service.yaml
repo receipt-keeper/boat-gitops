@@ -1,0 +1,22 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "boatlab.postgresqlName" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: {{ include "boatlab.postgresqlName" . }}
+    {{- include "boatlab.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: {{ .Values.postgresql.syncWave | quote }}
+spec:
+  type: {{ .Values.postgresql.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ include "boatlab.postgresqlName" . }}
+  ports:
+    - name: postgresql
+      port: {{ .Values.postgresql.service.port }}
+      targetPort: postgresql
+      protocol: TCP
+{{- end }}
