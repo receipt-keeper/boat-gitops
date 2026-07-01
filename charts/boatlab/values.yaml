@@ -70,6 +70,13 @@ postgresql:
   service:
     type: ClusterIP
     port: 5432
+  external:
+    enabled: false
+    name: boatlab-postgresql-external
+    type: NodePort
+    port: 5432
+    nodePort: null
+    annotations: {}
   pgData: /var/lib/postgresql/data/pgdata
   persistence:
     enabled: true
