@@ -1,0 +1,26 @@
+{{- if and .Values.postgresql.enabled .Values.postgresql.external.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.postgresql.external.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.postgresql.external.name }}
+    {{- include "boatlab.labels" . | nindent 4 }}
+  {{- with .Values.postgresql.external.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.postgresql.external.type }}
+  selector:
+    app.kubernetes.io/name: {{ include "boatlab.postgresqlName" . }}
+  ports:
+    - name: postgresql
+      port: {{ .Values.postgresql.external.port }}
+      targetPort: postgresql
+      {{- if .Values.postgresql.external.nodePort }}
+      nodePort: {{ .Values.postgresql.external.nodePort }}
+      {{- end }}
+      protocol: TCP
+{{- end }}
