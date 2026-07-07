@@ -56,6 +56,9 @@ backend:
       size: 10Gi
       accessModes:
         - ReadWriteOnce
+  podSecurityContext:
+    fsGroup: 999
+    fsGroupChangePolicy: OnRootMismatch
   podAnnotations: {}
 
 migration:
