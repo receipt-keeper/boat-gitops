@@ -61,7 +61,16 @@ spec:
             - name: firebase-credentials
               mountPath: {{ .Values.backend.firebaseMountPath }}
               readOnly: true
+            {{- if .Values.backend.fileStorage.enabled }}
+            - name: file-storage
+              mountPath: {{ .Values.backend.fileStorage.mountPath }}
+            {{- end }}
       volumes:
         - name: firebase-credentials
           secret:
             secretName: {{ .Values.backend.firebaseSecretName }}
+        {{- if .Values.backend.fileStorage.enabled }}
+        - name: file-storage
+          persistentVolumeClaim:
+            claimName: {{ .Values.backend.fileStorage.name }}
+        {{- end }}
