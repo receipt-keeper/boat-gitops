@@ -47,6 +47,15 @@ backend:
     periodSeconds: 20
     timeoutSeconds: 3
     failureThreshold: 3
+  fileStorage:
+    enabled: true
+    name: boatlab-backend-files
+    mountPath: /tmp/storage/files
+    persistence:
+      storageClassName: longhorn
+      size: 10Gi
+      accessModes:
+        - ReadWriteOnce
   podAnnotations: {}
 
 migration:

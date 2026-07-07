@@ -1,0 +1,17 @@
+{{- if .Values.backend.fileStorage.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.backend.fileStorage.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: {{ include "boatlab.backendName" . }}
+    {{- include "boatlab.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.backend.fileStorage.persistence.accessModes | nindent 4 }}
+  storageClassName: {{ .Values.backend.fileStorage.persistence.storageClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.backend.fileStorage.persistence.size }}
+{{- end }}
