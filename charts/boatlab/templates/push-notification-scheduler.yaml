@@ -32,8 +32,6 @@ spec:
                 - secretRef:
                     name: {{ .Values.backend.appSecretName }}
               command:
-                - uv
-                - run
                 - python
                 - -m
                 - app.modules.notifications.jobs.schedule_push_notifications
