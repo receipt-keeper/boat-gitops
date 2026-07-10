@@ -9,6 +9,9 @@ image:
 backend:
   replicas: 1
 
+pushNotificationScheduler:
+  enabled: true
+
 postgresql:
   external:
     enabled: true

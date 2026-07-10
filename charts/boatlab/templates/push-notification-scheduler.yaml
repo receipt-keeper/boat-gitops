@@ -1,0 +1,41 @@
+{{- if .Values.pushNotificationScheduler.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "boatlab.pushNotificationSchedulerName" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: {{ include "boatlab.pushNotificationSchedulerName" . }}
+    {{- include "boatlab.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.pushNotificationScheduler.schedule | quote }}
+  concurrencyPolicy: {{ .Values.pushNotificationScheduler.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.pushNotificationScheduler.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.pushNotificationScheduler.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.pushNotificationScheduler.backoffLimit }}
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: {{ include "boatlab.pushNotificationSchedulerName" . }}
+            {{- include "boatlab.labels" . | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          imagePullSecrets:
+            {{- toYaml .Values.imagePullSecrets | nindent 12 }}
+          containers:
+            - name: scheduler
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              envFrom:
+                - secretRef:
+                    name: {{ .Values.backend.appSecretName }}
+              command:
+                - uv
+                - run
+                - python
+                - -m
+                - app.modules.notifications.jobs.schedule_push_notifications
+                - --dry-run=false
+{{- end }}
