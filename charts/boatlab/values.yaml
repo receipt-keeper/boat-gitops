@@ -70,6 +70,15 @@ migration:
   hookDeletePolicy: BeforeHookCreation,HookSucceeded
   syncWave: "-1"
 
+pushNotificationScheduler:
+  enabled: false
+  name: boatlab-push-notification-scheduler
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  backoffLimit: 2
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+
 postgresql:
   enabled: true
   name: boatlab-postgresql

@@ -23,3 +23,7 @@ app.kubernetes.io/name: {{ .name | quote }}
 {{- define "boatlab.migrationName" -}}
 {{- .Values.migration.name -}}
 {{- end }}
+
+{{- define "boatlab.pushNotificationSchedulerName" -}}
+{{- .Values.pushNotificationScheduler.name -}}
+{{- end }}

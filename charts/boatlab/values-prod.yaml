@@ -16,6 +16,9 @@ backend:
       cpu: "1"
       memory: 1Gi
 
+pushNotificationScheduler:
+  enabled: false
+
 postgresql:
   persistence:
     size: 10Gi
