@@ -4,7 +4,7 @@ namespace:
   name: boatlab-dev
 
 image:
-  tag: sha-af6b73e
+  tag: sha-c871ce8
 
 backend:
   replicas: 1
