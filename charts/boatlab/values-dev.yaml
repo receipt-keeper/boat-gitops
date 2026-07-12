@@ -4,7 +4,7 @@ namespace:
   name: boatlab-dev
 
 image:
-  tag: sha-c871ce8
+  tag: sha-74e4d67
 
 backend:
   replicas: 1
@@ -22,6 +22,8 @@ postgresql:
     size: 5Gi
 
 ingress:
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 60m
   hosts:
     - host: boatlab-dev.luigi99.cloud
       paths:
