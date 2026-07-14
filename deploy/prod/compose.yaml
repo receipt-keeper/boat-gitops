@@ -3,7 +3,8 @@ name: boatlab-prod
 x-runtime: &runtime
   image: "${BACKEND_IMAGE_REPOSITORY:-ghcr.io/receipt-keeper/boat-backend}@${IMAGE_DIGEST:?IMAGE_DIGEST is required}"
   env_file:
-    - "${RUNTIME_ENV_FILE:-./runtime.env}"
+    - path: "${RUNTIME_ENV_FILE:-./runtime.env}"
+      format: raw
   networks:
     - boatlab
 
