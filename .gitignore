@@ -1,8 +1,10 @@
 .DS_Store
 ._*
 .env
+runtime.env
 *.secret.yaml
 *.secrets.yaml
 firebase-*.json
+service-account.json
 tmp/
 dist/

@@ -1,0 +1,16 @@
+[Unit]
+Description=Boatlab 운영 푸시 알림 scheduler one-shot
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/boatlab/prod
+EnvironmentFile=/etc/boatlab/prod/release.env
+Environment=RUNTIME_ENV_FILE=/etc/boatlab/prod/runtime.env
+ExecStart=/usr/bin/flock --nonblock --conflict-exit-code 0 /run/lock/boatlab-scheduler.lock /usr/bin/docker compose --ansi never --project-name boatlab-prod --file /opt/boatlab/prod/compose.yaml run --rm --no-deps scheduler
+TimeoutStartSec=15min
+
+[Install]
+WantedBy=multi-user.target

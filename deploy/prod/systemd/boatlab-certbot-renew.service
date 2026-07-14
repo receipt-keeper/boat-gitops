@@ -1,0 +1,11 @@
+[Unit]
+Description=Boatlab 운영 TLS 인증서 갱신
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/boatlab/prod/release.env
+ExecStart=/opt/boatlab/prod/scripts/renew-certificate.sh
+TimeoutStartSec=30min
