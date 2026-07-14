@@ -52,10 +52,6 @@ jobs:
           grep -Fq -- "app.modules.notifications.jobs.schedule_push_notifications" deploy/prod/compose.yaml
           grep -Fq -- "--dry-run=false" deploy/prod/compose.yaml
           grep -Fq -- "certbot/certbot:v5.7.0@sha256:" deploy/prod/compose.yaml
-          grep -Fq -- 'REMOTE_DOCKER_CONFIG="/run/boatlab-prod-docker-config"' \
-            deploy/prod/scripts/github-deploy.sh
-          grep -Fq -- "rm -rf \"\$REMOTE_DOCKER_CONFIG\"" \
-            deploy/prod/scripts/github-deploy.sh
           grep -Fq -- "run: deploy/prod/scripts/github-deploy.sh" .github/workflows/deploy.yml
           grep -Fq -- "name: boatlab 운영 배포" .github/workflows/deploy.yml
           if grep -R -n -- "uv run" deploy/prod \
@@ -117,8 +113,6 @@ jobs:
           PRODUCTION_KNOWN_HOSTS=dummy \
           PRODUCTION_RUNTIME_ENV="$(< "$temp_dir/runtime.env")" \
           PRODUCTION_FIREBASE_JSON="$(< "$temp_dir/firebase.json")" \
-          PRODUCTION_GHCR_USERNAME=boatlab \
-          PRODUCTION_GHCR_TOKEN=dummy \
           PRODUCTION_LETSENCRYPT_EMAIL=ops@example.com \
             deploy/prod/scripts/github-deploy.sh --validate-only
           sed 's/__BACKEND_SLOT__/backend-blue/g' \

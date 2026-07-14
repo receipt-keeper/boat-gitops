@@ -7,7 +7,6 @@ PROD_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 readonly PROD_ROOT
 readonly DEPLOY_ROOT="/opt/boatlab/prod"
 readonly CONFIG_ROOT="/etc/boatlab/prod"
-readonly REMOTE_DOCKER_CONFIG="/run/boatlab-prod-docker-config"
 
 die() {
     printf '오류: %s\n' "$1" >&2
@@ -22,15 +21,14 @@ require_env() {
 validate_inputs() {
     local name
     for name in IMAGE_TAG PRODUCTION_HOST PRODUCTION_USER PRODUCTION_RUNTIME_ENV \
-        PRODUCTION_FIREBASE_JSON PRODUCTION_GHCR_USERNAME PRODUCTION_GHCR_TOKEN \
-        PRODUCTION_LETSENCRYPT_EMAIL PRODUCTION_SSH_PRIVATE_KEY PRODUCTION_KNOWN_HOSTS; do
+        PRODUCTION_FIREBASE_JSON PRODUCTION_LETSENCRYPT_EMAIL \
+        PRODUCTION_SSH_PRIVATE_KEY PRODUCTION_KNOWN_HOSTS; do
         require_env "$name"
     done
 
     [[ "$IMAGE_TAG" =~ ^sha-[0-9a-f]{7,64}$ ]] || die "IMAGE_TAG 형식이 올바르지 않습니다."
     [[ "$PRODUCTION_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || die "PRODUCTION_HOST 형식이 올바르지 않습니다."
     [[ "$PRODUCTION_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "PRODUCTION_USER 형식이 올바르지 않습니다."
-    [[ "$PRODUCTION_GHCR_USERNAME" =~ ^[A-Za-z0-9-]+$ ]] || die "PRODUCTION_GHCR_USERNAME 형식이 올바르지 않습니다."
     [[ "$PRODUCTION_LETSENCRYPT_EMAIL" =~ ^[A-Za-z0-9][A-Za-z0-9._%+-]*@([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] || die "PRODUCTION_LETSENCRYPT_EMAIL 형식이 올바르지 않습니다."
 
     local expected_tag
@@ -73,7 +71,6 @@ cleanup() {
         if [[ -n "$remote_stage" ]]; then
             ssh "${ssh_opts[@]}" "$target" rm -rf -- "$remote_stage" >/dev/null 2>&1
         fi
-        ssh "${ssh_opts[@]}" "$target" sudo rm -rf "$REMOTE_DOCKER_CONFIG" >/dev/null 2>&1
         if [[ "$deployment_complete" != true ]]; then
             ssh "${ssh_opts[@]}" "$target" \
                 'if sudo test -s /etc/boatlab/prod/release.env; then sudo systemctl enable --now boatlab-scheduler.timer boatlab-certbot-renew.timer; fi' \
@@ -130,13 +127,7 @@ ssh "${ssh_opts[@]}" "$target" bash -s -- \
     "$DEPLOY_ROOT" "$CONFIG_ROOT" "$remote_stage" < "$SCRIPT_DIR/install-release.sh"
 remote_stage=''
 
-ssh "${ssh_opts[@]}" "$target" sudo install -d -m 0700 "$REMOTE_DOCKER_CONFIG"
-printf '%s' "$PRODUCTION_GHCR_TOKEN" | ssh "${ssh_opts[@]}" "$target" sudo env \
-    "DOCKER_CONFIG=$REMOTE_DOCKER_CONFIG" docker login ghcr.io \
-    --username "$PRODUCTION_GHCR_USERNAME" --password-stdin
-
 ssh "${ssh_opts[@]}" "$target" sudo env \
-    "DOCKER_CONFIG=$REMOTE_DOCKER_CONFIG" \
     "IMAGE_TAG=$IMAGE_TAG" \
     "LETSENCRYPT_EMAIL=$PRODUCTION_LETSENCRYPT_EMAIL" \
     /opt/boatlab/prod/scripts/run-release.sh

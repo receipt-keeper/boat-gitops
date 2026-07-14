@@ -3,13 +3,11 @@ set -Eeuo pipefail
 
 readonly DEPLOY_ROOT="/opt/boatlab/prod"
 readonly IMAGE_REPOSITORY="ghcr.io/receipt-keeper/boat-backend"
-readonly EXPECTED_DOCKER_CONFIG="/run/boatlab-prod-docker-config"
 
 [[ "$(id -u)" -eq 0 ]] || {
     printf '오류: run-release.sh는 root 권한으로 실행해야 합니다.\n' >&2
     exit 1
 }
-[[ "${DOCKER_CONFIG:-}" == "$EXPECTED_DOCKER_CONFIG" ]] || exit 2
 [[ "${IMAGE_TAG:-}" =~ ^sha-[0-9a-f]{7,64}$ ]] || exit 2
 [[ "${LETSENCRYPT_EMAIL:-}" =~ ^[A-Za-z0-9][A-Za-z0-9._%+-]*@([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] || exit 2
 

@@ -35,7 +35,5 @@ jobs:
           PRODUCTION_KNOWN_HOSTS: ${{ secrets.PRODUCTION_KNOWN_HOSTS }}
           PRODUCTION_RUNTIME_ENV: ${{ secrets.PRODUCTION_RUNTIME_ENV }}
           PRODUCTION_FIREBASE_JSON: ${{ secrets.PRODUCTION_FIREBASE_JSON }}
-          PRODUCTION_GHCR_USERNAME: ${{ secrets.PRODUCTION_GHCR_USERNAME }}
-          PRODUCTION_GHCR_TOKEN: ${{ secrets.PRODUCTION_GHCR_TOKEN }}
           PRODUCTION_LETSENCRYPT_EMAIL: ${{ vars.PRODUCTION_LETSENCRYPT_EMAIL }}
         run: deploy/prod/scripts/github-deploy.sh
