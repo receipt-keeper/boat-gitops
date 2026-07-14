@@ -10,6 +10,7 @@ python3 - "$1" "$2" <<'PY'
 import json
 import re
 import sys
+from urllib.parse import urlsplit
 
 env_path, firebase_path = sys.argv[1:]
 values: dict[str, str] = {}
@@ -60,8 +61,20 @@ expected = {
 invalid = [key for key, expected_value in expected.items() if values.get(key) != expected_value]
 if invalid:
     raise SystemExit("runtime env 고정값이 올바르지 않습니다: " + ", ".join(invalid))
-if not values["DATABASE_URL"].startswith("postgresql+asyncpg://"):
-    raise SystemExit("DATABASE_URL은 postgresql+asyncpg:// 형식이어야 합니다.")
+try:
+    database_url = urlsplit(values["DATABASE_URL"])
+    database_port = database_url.port
+except ValueError:
+    raise SystemExit("DATABASE_URL 구조가 올바르지 않습니다.") from None
+if (
+    database_url.scheme != "postgresql+asyncpg"
+    or not database_url.username
+    or not database_url.password
+    or not database_url.hostname
+    or database_port != 5432
+    or not database_url.path.strip("/")
+):
+    raise SystemExit("DATABASE_URL 구조가 올바르지 않습니다.")
 if any(values.get(key) for key in ("S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY")):
     raise SystemExit("운영 runtime env에는 정적 S3 key를 넣지 않습니다.")
 
