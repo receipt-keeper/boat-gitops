@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     name: 운영 배포
     runs-on: ubuntu-latest
     timeout-minutes: 30
