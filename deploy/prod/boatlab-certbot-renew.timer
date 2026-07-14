@@ -1,0 +1,11 @@
+[Unit]
+Description=Boatlab 운영 TLS 인증서 일일 갱신 확인
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=6h
+Persistent=true
+Unit=boatlab-certbot-renew.service
+
+[Install]
+WantedBy=timers.target

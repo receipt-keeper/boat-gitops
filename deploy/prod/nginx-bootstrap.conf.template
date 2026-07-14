@@ -1,0 +1,22 @@
+server {
+    listen 80 default_server;
+    server_name _;
+
+    return 444;
+}
+
+server {
+    listen 80;
+    server_name api.boatlab.co.kr;
+
+    server_tokens off;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type text/plain;
+    }
+
+    location / {
+        return 503;
+    }
+}
