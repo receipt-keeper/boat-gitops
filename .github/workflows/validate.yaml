@@ -81,7 +81,11 @@ jobs:
 
           cat > "$temp_dir/runtime.env" <<'ENV'
           APP_ENV=prod
-          DATABASE_URL=postgresql+asyncpg://user:password@db.example:5432/boatlab
+          DB_HOST=db.example
+          DB_PORT=5432
+          DB_NAME=boatlab
+          DB_USER=user
+          DB_PASSWORD=p@ss$NAME
           JWT_SECRET_KEY=dummy
           JWT_ALGORITHM=HS256
           JWT_ISSUER=boat-backend
@@ -145,6 +149,7 @@ jobs:
           expected_image = f"ghcr.io/receipt-keeper/boat-backend@{expected_digest}"
           for name in ("backend-blue", "backend-green", "migrate", "scheduler"):
               assert services[name]["image"] == expected_image
+              assert services[name]["environment"]["DB_PASSWORD"] == "p@ss$$NAME"
           assert services["scheduler"]["command"] == [
               "python",
               "-m",

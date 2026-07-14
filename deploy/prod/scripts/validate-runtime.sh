@@ -10,7 +10,6 @@ python3 - "$1" "$2" <<'PY'
 import json
 import re
 import sys
-from urllib.parse import urlsplit
 
 env_path, firebase_path = sys.argv[1:]
 values: dict[str, str] = {}
@@ -29,7 +28,11 @@ with open(env_path, encoding="utf-8") as env_file:
         values[key] = value
 
 required = (
-    "DATABASE_URL",
+    "DB_HOST",
+    "DB_PORT",
+    "DB_NAME",
+    "DB_USER",
+    "DB_PASSWORD",
     "JWT_SECRET_KEY",
     "REFRESH_TOKEN_PEPPER",
     "PROMOTION_BENEFICIARY_HMAC_SECRET",
@@ -42,6 +45,8 @@ required = (
 missing = [key for key in required if not values.get(key)]
 if missing:
     raise SystemExit("runtime env 필수 항목이 누락되었습니다: " + ", ".join(missing))
+if "DATABASE_URL" in values:
+    raise SystemExit("운영 runtime env에는 DATABASE_URL을 넣지 않습니다.")
 
 expected = {
     "APP_ENV": "prod",
@@ -61,21 +66,18 @@ expected = {
 invalid = [key for key, expected_value in expected.items() if values.get(key) != expected_value]
 if invalid:
     raise SystemExit("runtime env 고정값이 올바르지 않습니다: " + ", ".join(invalid))
-try:
-    database_url = urlsplit(values["DATABASE_URL"])
-    database_port = database_url.port
-except ValueError:
-    raise SystemExit("DATABASE_URL 구조가 올바르지 않습니다.") from None
-if (
-    database_url.scheme != "postgresql+asyncpg"
-    or not database_url.username
-    or not database_url.password
-    or not database_url.hostname
-    or database_port != 5432
-    or not database_url.path.strip("/")
+if values["DB_PORT"] != "5432":
+    raise SystemExit("DB_PORT는 5432여야 합니다.")
+if any(
+    values.get(key)
+    for key in (
+        "S3_ACCESS_KEY_ID",
+        "S3_SECRET_ACCESS_KEY",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_SESSION_TOKEN",
+    )
 ):
-    raise SystemExit("DATABASE_URL 구조가 올바르지 않습니다.")
-if any(values.get(key) for key in ("S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY")):
     raise SystemExit("운영 runtime env에는 정적 S3 key를 넣지 않습니다.")
 
 with open(firebase_path, encoding="utf-8") as firebase_file:
