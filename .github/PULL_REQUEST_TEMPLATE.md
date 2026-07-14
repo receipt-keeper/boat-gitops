@@ -34,9 +34,11 @@
 
 - [ ] `git diff --check`
 - [ ] `helm lint charts/boatlab -f charts/boatlab/values-dev.yaml`
-- [ ] `helm lint charts/boatlab -f charts/boatlab/values-prod.yaml`
 - [ ] `helm template boatlab charts/boatlab -f charts/boatlab/values-dev.yaml`
-- [ ] `helm template boatlab charts/boatlab -f charts/boatlab/values-prod.yaml`
+- [ ] `bash deploy/prod/tests/deploy-state-machine.sh`
+- [ ] `docker compose -f deploy/prod/compose.yaml config`
+- [ ] Nginx bootstrap/final 설정 `nginx -t`
+- [ ] 운영 image 변경 시 `deploy/prod/image-tag`, `image-digest` 갱신
 
 ## Rollback
 
