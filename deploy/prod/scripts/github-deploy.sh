@@ -3,6 +3,8 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
+PROD_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+readonly PROD_ROOT
 readonly DEPLOY_ROOT="/opt/boatlab/prod"
 readonly CONFIG_ROOT="/etc/boatlab/prod"
 readonly REMOTE_DOCKER_CONFIG="/run/boatlab-prod-docker-config"
@@ -33,8 +35,8 @@ validate_inputs() {
 
     local expected_tag
     local expected_digest
-    expected_tag="$(< "$SCRIPT_DIR/image-tag")"
-    expected_digest="$(< "$SCRIPT_DIR/image-digest")"
+    expected_tag="$(< "$PROD_ROOT/config/image-tag")"
+    expected_digest="$(< "$PROD_ROOT/config/image-digest")"
     [[ "$expected_tag" =~ ^sha-[0-9a-f]{7,64}$ ]] || die "저장소 image-tag 형식이 올바르지 않습니다."
     [[ "$expected_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || die "저장소 image-digest 형식이 올바르지 않습니다."
     [[ "$IMAGE_TAG" == "$expected_tag" ]] || die "IMAGE_TAG는 저장소 image-tag와 일치해야 합니다."
@@ -90,11 +92,10 @@ printf '%s\n' "$PRODUCTION_RUNTIME_ENV" > "$runtime_file"
 printf '%s\n' "$PRODUCTION_FIREBASE_JSON" > "$firebase_file"
 "$SCRIPT_DIR/validate-runtime.sh" "$runtime_file" "$firebase_file"
 
-tar -C "$SCRIPT_DIR" -czf "$archive_file" \
-    compose.yaml image-digest nginx.conf.template nginx-bootstrap.conf.template \
-    bootstrap.sh deploy.sh renew-certificate.sh run-release.sh \
-    boatlab-scheduler.service boatlab-scheduler.timer \
-    boatlab-certbot-renew.service boatlab-certbot-renew.timer
+tar -C "$PROD_ROOT" -czf "$archive_file" \
+    compose.yaml config/image-tag config/image-digest nginx systemd \
+    scripts/bootstrap.sh scripts/deploy.sh scripts/renew-certificate.sh \
+    scripts/run-release.sh
 
 if [[ "$mode" == --validate-only ]]; then
     printf '운영 배포 입력 검증 완료\n'
@@ -138,7 +139,7 @@ ssh "${ssh_opts[@]}" "$target" sudo env \
     "DOCKER_CONFIG=$REMOTE_DOCKER_CONFIG" \
     "IMAGE_TAG=$IMAGE_TAG" \
     "LETSENCRYPT_EMAIL=$PRODUCTION_LETSENCRYPT_EMAIL" \
-    /opt/boatlab/prod/run-release.sh
+    /opt/boatlab/prod/scripts/run-release.sh
 
 deployment_complete=true
 printf '운영 배포 완료: %s\n' "$IMAGE_TAG"

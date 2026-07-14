@@ -3,16 +3,18 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
-readonly COMPOSE_FILE="${COMPOSE_FILE:-${SCRIPT_DIR}/compose.yaml}"
-readonly NGINX_TEMPLATE="${NGINX_TEMPLATE:-${SCRIPT_DIR}/nginx.conf.template}"
-readonly NGINX_BOOTSTRAP_TEMPLATE="${NGINX_BOOTSTRAP_TEMPLATE:-${SCRIPT_DIR}/nginx-bootstrap.conf.template}"
+PROD_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+readonly PROD_ROOT
+readonly COMPOSE_FILE="${COMPOSE_FILE:-${PROD_ROOT}/compose.yaml}"
+readonly NGINX_TEMPLATE="${NGINX_TEMPLATE:-${PROD_ROOT}/nginx/default.conf.template}"
+readonly NGINX_BOOTSTRAP_TEMPLATE="${NGINX_BOOTSTRAP_TEMPLATE:-${PROD_ROOT}/nginx/bootstrap.conf.template}"
 readonly RUNTIME_ENV_FILE="${RUNTIME_ENV_FILE:-/etc/boatlab/prod/runtime.env}"
 readonly RELEASE_ENV_FILE="${RELEASE_ENV_FILE:-/etc/boatlab/prod/release.env}"
 readonly ACTIVE_SLOT_FILE="${ACTIVE_SLOT_FILE:-/etc/boatlab/prod/active-slot}"
 readonly NGINX_CONFIG_ROOT="${NGINX_CONFIG_ROOT:-/etc/boatlab/prod/nginx}"
 readonly NGINX_CONFIG_FILE="${NGINX_CONFIG_FILE:-${NGINX_CONFIG_ROOT}/default.conf}"
 readonly BACKEND_IMAGE_REPOSITORY="${BACKEND_IMAGE_REPOSITORY:-ghcr.io/receipt-keeper/boat-backend}"
-readonly IMAGE_DIGEST_FILE="${IMAGE_DIGEST_FILE:-${SCRIPT_DIR}/image-digest}"
+readonly IMAGE_DIGEST_FILE="${IMAGE_DIGEST_FILE:-${PROD_ROOT}/config/image-digest}"
 readonly FIREBASE_CREDENTIALS_FILE="${FIREBASE_CREDENTIALS_FILE:-/etc/boatlab/prod/firebase/service-account.json}"
 readonly LETSENCRYPT_ROOT="${LETSENCRYPT_ROOT:-/etc/letsencrypt}"
 readonly CERTBOT_WEBROOT="${CERTBOT_WEBROOT:-/var/www/boatlab-certbot}"
@@ -202,7 +204,7 @@ write_active_slot() {
     mv -f "${ACTIVE_SLOT_FILE}.tmp" "$ACTIVE_SLOT_FILE"
 }
 
-deploy_image() {
+deploy_image() (
     local image_tag="$1"
     local current_slot
     local target_slot
@@ -316,7 +318,7 @@ deploy_image() {
     completed=true
     trap - EXIT
     printf '배포 완료: %s 슬롯, %s\n' "$target_slot" "$image_tag"
-}
+)
 
 main() {
     if [[ $# -eq 1 ]] && [[ "$1" == "-h" || "$1" == "--help" ]]; then

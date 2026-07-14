@@ -13,7 +13,7 @@ readonly EXPECTED_DOCKER_CONFIG="/run/boatlab-prod-docker-config"
 [[ "${IMAGE_TAG:-}" =~ ^sha-[0-9a-f]{7,64}$ ]] || exit 2
 [[ "${LETSENCRYPT_EMAIL:-}" =~ ^[A-Za-z0-9][A-Za-z0-9._%+-]*@([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] || exit 2
 
-expected_digest="$(< "$DEPLOY_ROOT/image-digest")"
+expected_digest="$(< "$DEPLOY_ROOT/config/image-digest")"
 [[ "$expected_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || exit 2
 resolved_digest="$(docker buildx imagetools inspect \
     "$IMAGE_REPOSITORY:$IMAGE_TAG" --format '{{.Manifest.Digest}}')"
@@ -27,7 +27,7 @@ systemctl stop boatlab-scheduler.service >/dev/null 2>&1 || true
 systemctl stop boatlab-certbot-renew.timer >/dev/null 2>&1 || true
 systemctl stop boatlab-certbot-renew.service >/dev/null 2>&1 || true
 
-LETSENCRYPT_EMAIL="$LETSENCRYPT_EMAIL" "$DEPLOY_ROOT/deploy.sh" deploy "$IMAGE_TAG"
+LETSENCRYPT_EMAIL="$LETSENCRYPT_EMAIL" "$DEPLOY_ROOT/scripts/deploy.sh" deploy "$IMAGE_TAG"
 
 systemctl enable --now boatlab-scheduler.timer boatlab-certbot-renew.timer
 systemctl is-active --quiet boatlab-scheduler.timer

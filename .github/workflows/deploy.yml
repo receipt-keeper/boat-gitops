@@ -38,4 +38,4 @@ jobs:
           PRODUCTION_GHCR_USERNAME: ${{ secrets.PRODUCTION_GHCR_USERNAME }}
           PRODUCTION_GHCR_TOKEN: ${{ secrets.PRODUCTION_GHCR_TOKEN }}
           PRODUCTION_LETSENCRYPT_EMAIL: ${{ vars.PRODUCTION_LETSENCRYPT_EMAIL }}
-        run: deploy/prod/github-deploy.sh
+        run: deploy/prod/scripts/github-deploy.sh

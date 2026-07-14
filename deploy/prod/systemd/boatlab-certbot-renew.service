@@ -7,5 +7,5 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/boatlab/prod/release.env
-ExecStart=/opt/boatlab/prod/renew-certificate.sh
+ExecStart=/opt/boatlab/prod/scripts/renew-certificate.sh
 TimeoutStartSec=30min

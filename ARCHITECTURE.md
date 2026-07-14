@@ -42,9 +42,9 @@ systemd는 scheduler와 인증서 갱신 컨테이너의 실행 시각만 관리
 | dev Application | Argo CD | `argocd/applications/boatlab-dev.yaml` |
 | dev backend, PostgreSQL, migration | Helm | `charts/boatlab/` |
 | prod Nginx, backend, one-shot 작업 | Docker Compose | `deploy/prod/compose.yaml` |
-| prod 배포 이미지 | Git | `deploy/prod/image-tag`, `image-digest` |
-| prod 배포 순서와 슬롯 전환 | 배포 스크립트 | `deploy/prod/deploy.sh` |
-| prod scheduler와 인증서 갱신 | systemd | `deploy/prod/*.service`, `*.timer` |
+| prod 배포 이미지 | Git | `deploy/prod/config/image-tag`, `image-digest` |
+| prod 배포 순서와 슬롯 전환 | 배포 스크립트 | `deploy/prod/scripts/deploy.sh` |
+| prod scheduler와 인증서 갱신 | systemd | `deploy/prod/systemd/` |
 | prod runtime Secret | GitHub Environment | `PRODUCTION_RUNTIME_ENV` |
 | Firebase 서비스 계정 | GitHub Environment | `PRODUCTION_FIREBASE_JSON` |
 

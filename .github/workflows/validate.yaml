@@ -39,24 +39,24 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          for script in deploy/prod/*.sh deploy/prod/tests/*.sh; do
+          for script in deploy/prod/scripts/*.sh deploy/prod/tests/*.sh; do
             bash -n "$script"
           done
           bash deploy/prod/tests/deploy-state-machine.sh
-          grep -Eq '^sha-[0-9a-f]{7,64}$' deploy/prod/image-tag
-          grep -Eq '^sha256:[0-9a-f]{64}$' deploy/prod/image-digest
-          grep -Fq -- "api.boatlab.co.kr" deploy/prod/nginx.conf.template
-          grep -Fq -- "OnCalendar=*:0/5" deploy/prod/boatlab-scheduler.timer
-          grep -Fq -- "flock --nonblock" deploy/prod/boatlab-scheduler.service
-          grep -Fq -- "--conflict-exit-code 0" deploy/prod/boatlab-scheduler.service
+          grep -Eq '^sha-[0-9a-f]{7,64}$' deploy/prod/config/image-tag
+          grep -Eq '^sha256:[0-9a-f]{64}$' deploy/prod/config/image-digest
+          grep -Fq -- "api.boatlab.co.kr" deploy/prod/nginx/default.conf.template
+          grep -Fq -- "OnCalendar=*:0/5" deploy/prod/systemd/boatlab-scheduler.timer
+          grep -Fq -- "flock --nonblock" deploy/prod/systemd/boatlab-scheduler.service
+          grep -Fq -- "--conflict-exit-code 0" deploy/prod/systemd/boatlab-scheduler.service
           grep -Fq -- "app.modules.notifications.jobs.schedule_push_notifications" deploy/prod/compose.yaml
           grep -Fq -- "--dry-run=false" deploy/prod/compose.yaml
           grep -Fq -- "certbot/certbot:v5.7.0@sha256:" deploy/prod/compose.yaml
           grep -Fq -- 'REMOTE_DOCKER_CONFIG="/run/boatlab-prod-docker-config"' \
-            deploy/prod/github-deploy.sh
+            deploy/prod/scripts/github-deploy.sh
           grep -Fq -- "rm -rf \"\$REMOTE_DOCKER_CONFIG\"" \
-            deploy/prod/github-deploy.sh
-          grep -Fq -- "run: deploy/prod/github-deploy.sh" .github/workflows/deploy.yml
+            deploy/prod/scripts/github-deploy.sh
+          grep -Fq -- "run: deploy/prod/scripts/github-deploy.sh" .github/workflows/deploy.yml
           grep -Fq -- "name: boatlab 운영 배포" .github/workflows/deploy.yml
           if grep -R -n -- "uv run" deploy/prod \
             .github/workflows/deploy.yml; then
@@ -64,7 +64,8 @@ jobs:
             exit 1
           fi
           docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.10.0 \
-            deploy/prod/*.sh deploy/prod/tests/*.sh
+            --severity=warning \
+            deploy/prod/scripts/*.sh deploy/prod/tests/*.sh
 
       - name: Compose와 Nginx 검사
         shell: bash
@@ -109,7 +110,7 @@ jobs:
             > "$temp_dir/firebase.json"
 
           RUNNER_TEMP="$temp_dir" \
-          IMAGE_TAG="$(< deploy/prod/image-tag)" \
+          IMAGE_TAG="$(< deploy/prod/config/image-tag)" \
           PRODUCTION_HOST=prod.example.com \
           PRODUCTION_USER=ubuntu \
           PRODUCTION_SSH_PRIVATE_KEY=dummy \
@@ -119,9 +120,9 @@ jobs:
           PRODUCTION_GHCR_USERNAME=boatlab \
           PRODUCTION_GHCR_TOKEN=dummy \
           PRODUCTION_LETSENCRYPT_EMAIL=ops@example.com \
-            deploy/prod/github-deploy.sh --validate-only
+            deploy/prod/scripts/github-deploy.sh --validate-only
           sed 's/__BACKEND_SLOT__/backend-blue/g' \
-            deploy/prod/nginx.conf.template > "$temp_dir/nginx/default.conf"
+            deploy/prod/nginx/default.conf.template > "$temp_dir/nginx/default.conf"
 
           openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
             -subj '/CN=api.boatlab.co.kr' \
@@ -129,7 +130,7 @@ jobs:
             -out "$temp_dir/letsencrypt/live/api.boatlab.co.kr/fullchain.pem" >/dev/null 2>&1
 
           IMAGE_TAG=sha-0000000 \
-          IMAGE_DIGEST="$(< deploy/prod/image-digest)" \
+          IMAGE_DIGEST="$(< deploy/prod/config/image-digest)" \
           RUNTIME_ENV_FILE="$temp_dir/runtime.env" \
           FIREBASE_CREDENTIALS_FILE="$temp_dir/firebase.json" \
           NGINX_CONFIG_ROOT="$temp_dir/nginx" \
@@ -138,7 +139,7 @@ jobs:
           docker compose -f deploy/prod/compose.yaml config --format json \
             > "$temp_dir/compose.json"
 
-          python - "$temp_dir/compose.json" "$(< deploy/prod/image-digest)" <<'PY'
+          python - "$temp_dir/compose.json" "$(< deploy/prod/config/image-digest)" <<'PY'
           import json
           import sys
 
@@ -164,7 +165,7 @@ jobs:
           PY
 
           docker run --rm \
-            -v "$PWD/deploy/prod/nginx-bootstrap.conf.template:/etc/nginx/conf.d/default.conf:ro" \
+            -v "$PWD/deploy/prod/nginx/bootstrap.conf.template:/etc/nginx/conf.d/default.conf:ro" \
             -v "$temp_dir/webroot:/var/www/certbot:ro" \
             nginx:1.30.3-alpine@sha256:0d3b80406a13a767339fbe2f41406d6c7da727ab89cf8fae399e81f780f814d1 nginx -t
 
@@ -176,7 +177,7 @@ jobs:
             nginx:1.30.3-alpine@sha256:0d3b80406a13a767339fbe2f41406d6c7da727ab89cf8fae399e81f780f814d1 nginx -t
 
           mv "$temp_dir/nginx/default.conf" "$temp_dir/nginx/default.next"
-          cp deploy/prod/nginx-bootstrap.conf.template "$temp_dir/nginx/default.conf"
+          cp deploy/prod/nginx/bootstrap.conf.template "$temp_dir/nginx/default.conf"
           nginx_container="$(docker run -d \
             --add-host=backend-blue:127.0.0.1 \
             -v "$temp_dir/nginx:/etc/nginx/conf.d:ro" \

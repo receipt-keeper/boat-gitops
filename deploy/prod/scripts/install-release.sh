@@ -28,15 +28,14 @@ sudo install -m 0600 "$STAGING_ROOT/boatlab-runtime.env" "$CONFIG_ROOT/runtime.e
 sudo install -m 0600 "$STAGING_ROOT/boatlab-firebase.json" \
     "$CONFIG_ROOT/firebase/service-account.json"
 sudo chown -R root:root "$DEPLOY_ROOT" "$CONFIG_ROOT"
-sudo chmod 0750 "$DEPLOY_ROOT/bootstrap.sh" "$DEPLOY_ROOT/deploy.sh" \
-    "$DEPLOY_ROOT/renew-certificate.sh" "$DEPLOY_ROOT/run-release.sh"
-sudo install -m 0644 "$DEPLOY_ROOT/boatlab-scheduler.service" \
+sudo chmod 0750 "$DEPLOY_ROOT"/scripts/*.sh
+sudo install -m 0644 "$DEPLOY_ROOT/systemd/boatlab-scheduler.service" \
     /etc/systemd/system/boatlab-scheduler.service
-sudo install -m 0644 "$DEPLOY_ROOT/boatlab-scheduler.timer" \
+sudo install -m 0644 "$DEPLOY_ROOT/systemd/boatlab-scheduler.timer" \
     /etc/systemd/system/boatlab-scheduler.timer
-sudo install -m 0644 "$DEPLOY_ROOT/boatlab-certbot-renew.service" \
+sudo install -m 0644 "$DEPLOY_ROOT/systemd/boatlab-certbot-renew.service" \
     /etc/systemd/system/boatlab-certbot-renew.service
-sudo install -m 0644 "$DEPLOY_ROOT/boatlab-certbot-renew.timer" \
+sudo install -m 0644 "$DEPLOY_ROOT/systemd/boatlab-certbot-renew.timer" \
     /etc/systemd/system/boatlab-certbot-renew.timer
 sudo systemctl daemon-reload
 

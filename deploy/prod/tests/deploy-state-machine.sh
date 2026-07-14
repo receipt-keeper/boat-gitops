@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
-readonly DEPLOY_SCRIPT="${SCRIPT_DIR}/../deploy.sh"
+readonly DEPLOY_SCRIPT="${SCRIPT_DIR}/../scripts/deploy.sh"
 
 root="$(mktemp -d)"
 trap 'rm -rf "$root"' EXIT

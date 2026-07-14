@@ -39,7 +39,7 @@ python -m app.modules.notifications.jobs.schedule_push_notifications --dry-run=f
 ```bash
 helm lint charts/boatlab -f charts/boatlab/values-dev.yaml
 helm template boatlab charts/boatlab -f charts/boatlab/values-dev.yaml
-bash -n deploy/prod/*.sh
+bash -n deploy/prod/scripts/*.sh
 docker compose -f deploy/prod/compose.yaml config
 git diff --check
 ```
