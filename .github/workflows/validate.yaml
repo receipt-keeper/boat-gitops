@@ -51,6 +51,7 @@ jobs:
           grep -Fq -- "--conflict-exit-code 0" deploy/prod/systemd/boatlab-scheduler.service
           grep -Fq -- "app.modules.notifications.jobs.schedule_push_notifications" deploy/prod/compose.yaml
           grep -Fq -- "--dry-run=false" deploy/prod/compose.yaml
+          grep -Fq -- "install -m 0644 \"\$STAGING_ROOT/boatlab-firebase.json\"" deploy/prod/scripts/install-release.sh
           grep -Fq -- "certbot/certbot:v5.7.0@sha256:" deploy/prod/compose.yaml
           grep -Fq -- "run: deploy/prod/scripts/github-deploy.sh" .github/workflows/deploy.yml
           grep -Fq -- "name: boatlab 운영 배포" .github/workflows/deploy.yml
