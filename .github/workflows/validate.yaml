@@ -42,9 +42,10 @@ jobs:
           for script in deploy/prod/scripts/*.sh deploy/prod/tests/*.sh; do
             bash -n "$script"
           done
+          bash deploy/prod/tests/release-contract.sh
           bash deploy/prod/tests/deploy-state-machine.sh
-          grep -Eq '^sha-[0-9a-f]{7,64}$' deploy/prod/config/image-tag
-          grep -Eq '^sha256:[0-9a-f]{64}$' deploy/prod/config/image-digest
+          deploy/prod/scripts/validate-release.sh
+          deploy/prod/scripts/validate-release.sh --remote
           grep -Fq -- "api.boatlab.co.kr" deploy/prod/nginx/default.conf.template
           grep -Fq -- "OnCalendar=*:0/5" deploy/prod/systemd/boatlab-scheduler.timer
           grep -Fq -- "flock --nonblock" deploy/prod/systemd/boatlab-scheduler.service
@@ -52,11 +53,13 @@ jobs:
           grep -Fq -- "app.modules.notifications.jobs.schedule_push_notifications" deploy/prod/compose.yaml
           grep -Fq -- "--dry-run=false" deploy/prod/compose.yaml
           grep -Fq -- "install -m 0644 \"\$STAGING_ROOT/boatlab-firebase.json\"" deploy/prod/scripts/install-release.sh
+          grep -Fq -- "rm -f \"\$DEPLOY_ROOT/config/image-tag\" \"\$DEPLOY_ROOT/config/image-digest\"" deploy/prod/scripts/install-release.sh
           grep -Fq -- "certbot/certbot:v5.7.0@sha256:" deploy/prod/compose.yaml
           grep -Fq -- "--no-random-sleep-on-renew" deploy/prod/scripts/renew-certificate.sh
           grep -Fq -- "run: deploy/prod/scripts/github-deploy.sh" .github/workflows/deploy.yml
           grep -Fq -- "name: boatlab 운영 배포" .github/workflows/deploy.yml
           grep -Fq -- "if: github.ref == 'refs/heads/main'" .github/workflows/deploy.yml
+          grep -Fq -- "version:" .github/workflows/deploy.yml
           if grep -R -n -- "uv run" deploy/prod \
             .github/workflows/deploy.yml; then
             echo "운영 runtime 경로에 uv run이 남아 있습니다." >&2
@@ -112,16 +115,22 @@ jobs:
             '{"type":"service_account","project_id":"boatlab-test","private_key":"dummy","client_email":"server@example.com"}' \
             > "$temp_dir/firebase.json"
 
-          RUNNER_TEMP="$temp_dir" \
-          IMAGE_TAG="$(< deploy/prod/config/image-tag)" \
-          PRODUCTION_HOST=prod.example.com \
-          PRODUCTION_USER=ubuntu \
-          PRODUCTION_SSH_PRIVATE_KEY=dummy \
-          PRODUCTION_KNOWN_HOSTS=dummy \
-          PRODUCTION_RUNTIME_ENV="$(< "$temp_dir/runtime.env")" \
-          PRODUCTION_FIREBASE_JSON="$(< "$temp_dir/firebase.json")" \
-          PRODUCTION_LETSENCRYPT_EMAIL=ops@example.com \
-            deploy/prod/scripts/github-deploy.sh --validate-only
+          source deploy/prod/scripts/release-contract.sh
+          load_release_manifest deploy/prod/config/release.env
+          export RUNNER_TEMP="$temp_dir"
+          export PRODUCTION_HOST=prod.example.com
+          export PRODUCTION_USER=ubuntu
+          export PRODUCTION_SSH_PRIVATE_KEY=dummy
+          export PRODUCTION_KNOWN_HOSTS=dummy
+          PRODUCTION_RUNTIME_ENV="$(< "$temp_dir/runtime.env")"
+          PRODUCTION_FIREBASE_JSON="$(< "$temp_dir/firebase.json")"
+          export PRODUCTION_RUNTIME_ENV PRODUCTION_FIREBASE_JSON
+          export PRODUCTION_LETSENCRYPT_EMAIL=ops@example.com
+          deploy/prod/scripts/github-deploy.sh --validate-only
+          if RELEASE_VERSION=9.9.9 deploy/prod/scripts/github-deploy.sh --validate-only; then
+            echo "저장소 manifest와 다른 버전이 검증을 통과했습니다." >&2
+            exit 1
+          fi
           sed 's/__BACKEND_SLOT__/backend-blue/g' \
             deploy/prod/nginx/default.conf.template > "$temp_dir/nginx/default.conf"
 
@@ -130,8 +139,9 @@ jobs:
             -keyout "$temp_dir/letsencrypt/live/api.boatlab.co.kr/privkey.pem" \
             -out "$temp_dir/letsencrypt/live/api.boatlab.co.kr/fullchain.pem" >/dev/null 2>&1
 
-          IMAGE_TAG=sha-0000000 \
-          IMAGE_DIGEST="$(< deploy/prod/config/image-digest)" \
+          BACKEND_IMAGE_REPOSITORY="$BACKEND_IMAGE_REPOSITORY" \
+          IMAGE_TAG="$IMAGE_TAG" \
+          IMAGE_DIGEST="$IMAGE_DIGEST" \
           RUNTIME_ENV_FILE="$temp_dir/runtime.env" \
           FIREBASE_CREDENTIALS_FILE="$temp_dir/firebase.json" \
           NGINX_CONFIG_ROOT="$temp_dir/nginx" \
@@ -140,7 +150,7 @@ jobs:
           docker compose -f deploy/prod/compose.yaml config --format json \
             > "$temp_dir/compose.json"
 
-          python - "$temp_dir/compose.json" "$(< deploy/prod/config/image-digest)" <<'PY'
+          python - "$temp_dir/compose.json" "$IMAGE_DIGEST" <<'PY'
           import json
           import sys
 

@@ -57,6 +57,14 @@ prepare_case() {
     mkdir -p "$case_root/config/firebase" "$case_root/letsencrypt" "$case_root/webroot"
     printf 'APP_ENV=prod\n' > "$case_root/config/runtime.env"
     printf '{}\n' > "$case_root/config/firebase/service-account.json"
+    printf '%s\n' \
+        'RELEASE_VERSION=1.0.1' \
+        'GIT_TAG=v1.0.1' \
+        'GIT_REVISION=a802989a5bd821006ce05b316e859738f1621910' \
+        'BACKEND_IMAGE_REPOSITORY=ghcr.io/receipt-keeper/boat-backend' \
+        'IMAGE_TAG=sha-a802989' \
+        'IMAGE_DIGEST=sha256:ff1e923c2b7c8b7e4debd2a69a0cf94f6c7d07c5a790f298161f68d9689c3ab3' \
+        > "$case_root/config/desired-release.env"
     : > "$FAKE_LOG"
 }
 
@@ -70,7 +78,7 @@ install_mock_certificate() {
 
 run_deploy() {
     local case_root="$1"
-    BACKEND_IMAGE_REPOSITORY=ghcr.io/receipt-keeper/boat-backend \
+    RELEASE_MANIFEST_FILE="$case_root/config/desired-release.env" \
     RUNTIME_ENV_FILE="$case_root/config/runtime.env" \
     RELEASE_ENV_FILE="$case_root/config/release.env" \
     ACTIVE_SLOT_FILE="$case_root/config/active-slot" \
@@ -79,7 +87,7 @@ run_deploy() {
     LETSENCRYPT_ROOT="$case_root/letsencrypt" \
     CERTBOT_WEBROOT="$case_root/webroot" \
     LETSENCRYPT_EMAIL=test@example.com \
-    bash "$DEPLOY_SCRIPT" deploy sha-0000000
+    bash "$DEPLOY_SCRIPT" deploy 1.0.1
 }
 
 success_root="$root/success"
@@ -89,7 +97,7 @@ printf 'blue\n' > "$success_root/config/active-slot"
 export FAKE_CURL_RESULT=success FAKE_CERTBOT_FAIL=false FAKE_STOP_FAILURE='' FAKE_RELEASE_MV_FAILURE=false
 run_deploy "$success_root" >/dev/null
 [[ "$(< "$success_root/config/active-slot")" == green ]]
-grep -q '^IMAGE_TAG=sha-0000000$' "$success_root/config/release.env"
+cmp "$success_root/config/desired-release.env" "$success_root/config/release.env"
 grep -q 'server backend-green:8000;' "$success_root/config/nginx.conf"
 migration_line="$(grep -n 'run --rm --no-deps migrate' "$FAKE_LOG" | head -1 | cut -d: -f1)"
 start_line="$(grep -n 'up -d --force-recreate backend-green' "$FAKE_LOG" | head -1 | cut -d: -f1)"

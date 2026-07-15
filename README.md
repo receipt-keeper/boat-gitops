@@ -51,8 +51,8 @@ helm template boatlab charts/boatlab -f charts/boatlab/values-dev.yaml
 운영 배포는 GitHub `production` Environment 승인 후 `boatlab 운영 배포` workflow를
 직접 실행해야 시작된다. merge와 tag 생성만으로는 배포되지 않는다.
 
-- 입력은 `sha-*` immutable backend 이미지 태그만 허용한다.
-- `deploy/prod/config/image-tag`와 `image-digest` 변경 PR을 먼저 병합하고 같은 tag를 workflow에 입력한다.
+- 입력은 `1.0.1` 형식의 릴리스 버전만 허용한다.
+- `deploy/prod/config/release.env` 변경 PR을 먼저 병합하고 같은 버전을 workflow에 입력한다.
 - migration, 비활성 backend health, Nginx 전환, HTTPS health 순으로 진행한다.
 - scheduler는 systemd timer가 5분마다 one-shot 컨테이너를 실행한다.
 - Certbot 갱신은 별도 systemd timer가 매일 확인한다.

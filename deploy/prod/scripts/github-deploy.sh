@@ -8,6 +8,8 @@ readonly PROD_ROOT
 readonly DEPLOY_ROOT="/opt/boatlab/prod"
 readonly CONFIG_ROOT="/etc/boatlab/prod"
 
+source "$SCRIPT_DIR/release-contract.sh"
+
 die() {
     printf '오류: %s\n' "$1" >&2
     exit 1
@@ -20,24 +22,20 @@ require_env() {
 
 validate_inputs() {
     local name
-    for name in IMAGE_TAG PRODUCTION_HOST PRODUCTION_USER PRODUCTION_RUNTIME_ENV \
+    for name in RELEASE_VERSION PRODUCTION_HOST PRODUCTION_USER PRODUCTION_RUNTIME_ENV \
         PRODUCTION_FIREBASE_JSON PRODUCTION_LETSENCRYPT_EMAIL \
         PRODUCTION_SSH_PRIVATE_KEY PRODUCTION_KNOWN_HOSTS; do
         require_env "$name"
     done
 
-    [[ "$IMAGE_TAG" =~ ^sha-[0-9a-f]{7,64}$ ]] || die "IMAGE_TAG 형식이 올바르지 않습니다."
+    local requested_version="$RELEASE_VERSION"
+    [[ "$requested_version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || die "RELEASE_VERSION 형식이 올바르지 않습니다."
     [[ "$PRODUCTION_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || die "PRODUCTION_HOST 형식이 올바르지 않습니다."
     [[ "$PRODUCTION_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "PRODUCTION_USER 형식이 올바르지 않습니다."
     [[ "$PRODUCTION_LETSENCRYPT_EMAIL" =~ ^[A-Za-z0-9][A-Za-z0-9._%+-]*@([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] || die "PRODUCTION_LETSENCRYPT_EMAIL 형식이 올바르지 않습니다."
 
-    local expected_tag
-    local expected_digest
-    expected_tag="$(< "$PROD_ROOT/config/image-tag")"
-    expected_digest="$(< "$PROD_ROOT/config/image-digest")"
-    [[ "$expected_tag" =~ ^sha-[0-9a-f]{7,64}$ ]] || die "저장소 image-tag 형식이 올바르지 않습니다."
-    [[ "$expected_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || die "저장소 image-digest 형식이 올바르지 않습니다."
-    [[ "$IMAGE_TAG" == "$expected_tag" ]] || die "IMAGE_TAG는 저장소 image-tag와 일치해야 합니다."
+    load_release_manifest "$PROD_ROOT/config/release.env" || die "release manifest 검증에 실패했습니다."
+    [[ "$requested_version" == "$RELEASE_VERSION" ]] || die "요청 버전은 저장소 RELEASE_VERSION과 일치해야 합니다."
 }
 
 mode="${1:-deploy}"
@@ -55,6 +53,10 @@ case "$mode" in
 esac
 
 validate_inputs
+
+if [[ "$mode" == deploy ]]; then
+    "$SCRIPT_DIR/validate-release.sh" --remote
+fi
 
 runner_base="${RUNNER_TEMP:-/tmp}"
 runner_root="$(mktemp -d "${runner_base%/}/boatlab-prod.XXXXXX")"
@@ -90,9 +92,9 @@ printf '%s\n' "$PRODUCTION_FIREBASE_JSON" > "$firebase_file"
 "$SCRIPT_DIR/validate-runtime.sh" "$runtime_file" "$firebase_file"
 
 tar -C "$PROD_ROOT" -czf "$archive_file" \
-    compose.yaml config/image-tag config/image-digest nginx systemd \
+    compose.yaml config/release.env nginx systemd \
     scripts/bootstrap.sh scripts/deploy.sh scripts/renew-certificate.sh \
-    scripts/run-release.sh
+    scripts/release-contract.sh scripts/run-release.sh
 
 if [[ "$mode" == --validate-only ]]; then
     printf '운영 배포 입력 검증 완료\n'
@@ -128,9 +130,23 @@ ssh "${ssh_opts[@]}" "$target" bash -s -- \
 remote_stage=''
 
 ssh "${ssh_opts[@]}" "$target" sudo env \
-    "IMAGE_TAG=$IMAGE_TAG" \
+    "RELEASE_VERSION=$RELEASE_VERSION" \
     "LETSENCRYPT_EMAIL=$PRODUCTION_LETSENCRYPT_EMAIL" \
     /opt/boatlab/prod/scripts/run-release.sh
 
+active_slot="$(ssh "${ssh_opts[@]}" "$target" sudo cat /etc/boatlab/prod/active-slot)"
+[[ "$active_slot" == blue || "$active_slot" == green ]] || die "배포 후 active slot을 확인할 수 없습니다."
+
+if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    {
+        printf 'release_version=%s\n' "$RELEASE_VERSION"
+        printf 'git_tag=%s\n' "$GIT_TAG"
+        printf 'git_revision=%s\n' "$GIT_REVISION"
+        printf 'image_tag=%s\n' "$IMAGE_TAG"
+        printf 'image_digest=%s\n' "$IMAGE_DIGEST"
+        printf 'active_slot=%s\n' "$active_slot"
+    } >> "$GITHUB_OUTPUT"
+fi
+
 deployment_complete=true
-printf '운영 배포 완료: %s\n' "$IMAGE_TAG"
+printf '운영 배포 완료: %s, %s 슬롯\n' "$RELEASE_VERSION" "$active_slot"
