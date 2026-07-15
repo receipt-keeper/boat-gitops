@@ -38,7 +38,7 @@
 - [ ] `bash deploy/prod/tests/deploy-state-machine.sh`
 - [ ] `docker compose -f deploy/prod/compose.yaml config`
 - [ ] Nginx bootstrap/final 설정 `nginx -t`
-- [ ] 운영 image 변경 시 `deploy/prod/config/image-tag`, `image-digest` 갱신
+- [ ] 운영 릴리스 변경 시 `deploy/prod/config/release.env` 갱신
 
 ## Rollback
 

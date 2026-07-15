@@ -13,14 +13,13 @@ readonly RELEASE_ENV_FILE="${RELEASE_ENV_FILE:-/etc/boatlab/prod/release.env}"
 readonly ACTIVE_SLOT_FILE="${ACTIVE_SLOT_FILE:-/etc/boatlab/prod/active-slot}"
 readonly NGINX_CONFIG_ROOT="${NGINX_CONFIG_ROOT:-/etc/boatlab/prod/nginx}"
 readonly NGINX_CONFIG_FILE="${NGINX_CONFIG_FILE:-${NGINX_CONFIG_ROOT}/default.conf}"
-readonly BACKEND_IMAGE_REPOSITORY="${BACKEND_IMAGE_REPOSITORY:-ghcr.io/receipt-keeper/boat-backend}"
-readonly IMAGE_DIGEST_FILE="${IMAGE_DIGEST_FILE:-${PROD_ROOT}/config/image-digest}"
+readonly RELEASE_MANIFEST_FILE="${RELEASE_MANIFEST_FILE:-${PROD_ROOT}/config/release.env}"
 readonly FIREBASE_CREDENTIALS_FILE="${FIREBASE_CREDENTIALS_FILE:-/etc/boatlab/prod/firebase/service-account.json}"
 readonly LETSENCRYPT_ROOT="${LETSENCRYPT_ROOT:-/etc/letsencrypt}"
 readonly CERTBOT_WEBROOT="${CERTBOT_WEBROOT:-/var/www/boatlab-certbot}"
 readonly PRODUCTION_DOMAIN="api.boatlab.co.kr"
 
-export BACKEND_IMAGE_REPOSITORY RUNTIME_ENV_FILE NGINX_CONFIG_ROOT NGINX_CONFIG_FILE
+export RUNTIME_ENV_FILE NGINX_CONFIG_ROOT NGINX_CONFIG_FILE
 export FIREBASE_CREDENTIALS_FILE LETSENCRYPT_ROOT CERTBOT_WEBROOT
 export COMPOSE_PROJECT_NAME="boatlab-prod"
 
@@ -29,11 +28,13 @@ die() {
     exit 1
 }
 
+source "$SCRIPT_DIR/release-contract.sh"
+
 usage() {
     cat <<'EOF'
 사용법:
-  deploy.sh deploy sha-<commit>
-  deploy.sh rollback sha-<previous-commit>
+  deploy.sh deploy <version>
+  deploy.sh rollback <previous-version>
 EOF
 }
 
@@ -41,16 +42,12 @@ compose() {
     docker compose --project-name "$COMPOSE_PROJECT_NAME" --file "$COMPOSE_FILE" "$@"
 }
 
-validate_image_tag() {
-    local image_tag="$1"
-    [[ "$image_tag" =~ ^sha-[0-9a-f]{7,64}$ ]] || die "이미지 태그는 sha-<hex> 형식이어야 합니다."
-}
-
-load_image_digest() {
-    [[ -s "$IMAGE_DIGEST_FILE" ]] || die "image digest 파일이 없습니다: $IMAGE_DIGEST_FILE"
-    IMAGE_DIGEST="$(< "$IMAGE_DIGEST_FILE")"
-    [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || die "image digest 형식이 올바르지 않습니다."
-    export IMAGE_DIGEST
+load_release() {
+    local requested_version="$1"
+    [[ "$requested_version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || die "릴리스 버전 형식이 올바르지 않습니다."
+    load_release_manifest "$RELEASE_MANIFEST_FILE" || die "release manifest 검증에 실패했습니다."
+    [[ "$requested_version" == "$RELEASE_VERSION" ]] || die "요청 버전은 release manifest와 일치해야 합니다."
+    export RELEASE_VERSION GIT_TAG GIT_REVISION BACKEND_IMAGE_REPOSITORY IMAGE_TAG IMAGE_DIGEST
 }
 
 validate_runtime_files() {
@@ -185,13 +182,11 @@ wait_for_public_health() {
 }
 
 write_release_env() {
-    local image_tag="$1"
     local temporary_file
 
     install -d -m 0750 "$(dirname -- "$RELEASE_ENV_FILE")"
     temporary_file="$(mktemp "${RELEASE_ENV_FILE}.tmp.XXXXXX")"
-    printf 'BACKEND_IMAGE_REPOSITORY=%s\nIMAGE_TAG=%s\nIMAGE_DIGEST=%s\n' \
-        "$BACKEND_IMAGE_REPOSITORY" "$image_tag" "$IMAGE_DIGEST" > "$temporary_file"
+    install -m 0640 "$RELEASE_MANIFEST_FILE" "$temporary_file"
     chmod 0640 "$temporary_file"
     mv -f "$temporary_file" "$RELEASE_ENV_FILE"
 }
@@ -205,7 +200,7 @@ write_active_slot() {
 }
 
 deploy_image() (
-    local image_tag="$1"
+    local requested_version="$1"
     local current_slot
     local target_slot
     local target_service
@@ -217,10 +212,8 @@ deploy_image() (
     local nginx_switched=false
     local completed=false
 
-    validate_image_tag "$image_tag"
-    load_image_digest
+    load_release "$requested_version"
     validate_runtime_files
-    export IMAGE_TAG="$image_tag"
 
     current_slot="$(read_active_slot)"
     target_slot="$(opposite_slot "$current_slot")"
@@ -289,7 +282,7 @@ deploy_image() (
     }
     trap cleanup_deployment EXIT
 
-    printf '새 이미지 준비: %s\n' "$image_tag"
+    printf '새 릴리스 준비: %s (%s)\n' "$RELEASE_VERSION" "$IMAGE_TAG"
     compose pull migrate "$target_service"
 
     printf '데이터베이스 migration 실행\n'
@@ -309,7 +302,7 @@ deploy_image() (
 
     state_changed=true
     write_active_slot "$target_slot"
-    write_release_env "$image_tag"
+    write_release_env
 
     if [[ "$current_slot" != none ]]; then
         compose stop --timeout 30 "$current_service"
@@ -317,7 +310,7 @@ deploy_image() (
 
     completed=true
     trap - EXIT
-    printf '배포 완료: %s 슬롯, %s\n' "$target_slot" "$image_tag"
+    printf '배포 완료: %s 슬롯, %s (%s)\n' "$target_slot" "$RELEASE_VERSION" "$IMAGE_TAG"
 )
 
 main() {

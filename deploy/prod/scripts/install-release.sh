@@ -24,6 +24,7 @@ test -s "$STAGING_ROOT/boatlab-runtime.env"
 test -s "$STAGING_ROOT/boatlab-firebase.json"
 
 sudo tar -xzf "$STAGING_ROOT/boatlab-prod.tgz" -C "$DEPLOY_ROOT"
+sudo rm -f "$DEPLOY_ROOT/config/image-tag" "$DEPLOY_ROOT/config/image-digest"
 sudo install -m 0600 "$STAGING_ROOT/boatlab-runtime.env" "$CONFIG_ROOT/runtime.env"
 sudo install -m 0644 "$STAGING_ROOT/boatlab-firebase.json" \
     "$CONFIG_ROOT/firebase/service-account.json"
@@ -31,6 +32,7 @@ sudo chown -R root:root "$DEPLOY_ROOT" "$CONFIG_ROOT"
 sudo chmod 0750 \
     "$DEPLOY_ROOT/scripts/bootstrap.sh" \
     "$DEPLOY_ROOT/scripts/deploy.sh" \
+    "$DEPLOY_ROOT/scripts/release-contract.sh" \
     "$DEPLOY_ROOT/scripts/renew-certificate.sh" \
     "$DEPLOY_ROOT/scripts/run-release.sh"
 sudo install -m 0644 "$DEPLOY_ROOT/systemd/boatlab-scheduler.service" \

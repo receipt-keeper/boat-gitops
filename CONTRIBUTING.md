@@ -69,8 +69,8 @@ Compose와 Nginx 검증에는 실제 Secret 대신 임시 dummy 파일을 사용
 
 - dev는 Argo CD 자동 sync, prune, self-heal을 유지한다.
 - prod는 `production` Environment 승인 후 `workflow_dispatch`로만 배포한다.
-- 운영 이미지는 `deploy/prod/config/image-tag`와 `image-digest` 변경 PR로 기록한다.
-- 운영 workflow 입력은 병합된 `image-tag`와 같은 `sha-*` immutable tag만 사용한다.
+- 운영 릴리스는 `deploy/prod/config/release.env` 변경 PR로 기록한다.
+- 운영 workflow 입력은 병합된 manifest와 같은 릴리스 버전만 사용한다.
 - 운영 DB migration은 이전 active 앱과 호환되는 forward migration이어야 한다.
 - scheduler는 systemd timer가 자동 실행하며 사람이 5분마다 실행하지 않는다.
-- 실패 시 기존 슬롯 유지 여부와 이전 SHA rollback 절차를 PR에 기록한다.
+- rollback은 이전 릴리스 manifest를 복구하는 PR을 병합한 뒤 해당 버전을 재배포한다.
