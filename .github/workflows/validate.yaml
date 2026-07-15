@@ -53,6 +53,7 @@ jobs:
           grep -Fq -- "--dry-run=false" deploy/prod/compose.yaml
           grep -Fq -- "install -m 0644 \"\$STAGING_ROOT/boatlab-firebase.json\"" deploy/prod/scripts/install-release.sh
           grep -Fq -- "certbot/certbot:v5.7.0@sha256:" deploy/prod/compose.yaml
+          grep -Fq -- "--no-random-sleep-on-renew" deploy/prod/scripts/renew-certificate.sh
           grep -Fq -- "run: deploy/prod/scripts/github-deploy.sh" .github/workflows/deploy.yml
           grep -Fq -- "name: boatlab 운영 배포" .github/workflows/deploy.yml
           grep -Fq -- "if: github.ref == 'refs/heads/main'" .github/workflows/deploy.yml
