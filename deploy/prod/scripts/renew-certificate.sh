@@ -36,7 +36,8 @@ export RUNTIME_ENV_FILE=/etc/boatlab/prod/runtime.env
 export NGINX_CONFIG_ROOT=/etc/boatlab/prod/nginx
 
 docker compose --project-name "$COMPOSE_PROJECT_NAME" --file "$COMPOSE_FILE" \
-    run --rm --no-deps certbot renew --webroot -w /var/www/certbot --quiet "$@"
+    run --rm --no-deps certbot renew --webroot -w /var/www/certbot \
+    --quiet --no-random-sleep-on-renew "$@"
 
 nginx_container="$(docker compose --project-name "$COMPOSE_PROJECT_NAME" --file "$COMPOSE_FILE" ps -q nginx)"
 if [[ -n "$nginx_container" ]] && [[ "$(docker inspect --format '{{.State.Running}}' "$nginx_container")" == "true" ]]; then
