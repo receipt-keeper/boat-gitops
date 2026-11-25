@@ -7,6 +7,7 @@ PROD_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 readonly PROD_ROOT
 readonly DEPLOY_ROOT="/opt/boatlab/prod"
 readonly CONFIG_ROOT="/etc/boatlab/prod"
+readonly MAINTENANCE_MODE="${MAINTENANCE_MODE:-normal}"
 
 source "$SCRIPT_DIR/release-contract.sh"
 
@@ -33,6 +34,11 @@ validate_inputs() {
     [[ "$PRODUCTION_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || die "PRODUCTION_HOST 형식이 올바르지 않습니다."
     [[ "$PRODUCTION_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "PRODUCTION_USER 형식이 올바르지 않습니다."
     [[ "$PRODUCTION_LETSENCRYPT_EMAIL" =~ ^[A-Za-z0-9][A-Za-z0-9._%+-]*@([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$ ]] || die "PRODUCTION_LETSENCRYPT_EMAIL 형식이 올바르지 않습니다."
+    case "$MAINTENANCE_MODE" in
+        normal|stage1) ;;
+        stage2) die "stage2(전면 중지) 모드에서는 운영 배포를 실행할 수 없습니다. maintenance.sh apply normal 복구 후 배포하세요." ;;
+        *) die "지원하지 않는 MAINTENANCE_MODE입니다: $MAINTENANCE_MODE (허용: normal, stage1)" ;;
+    esac
 
     load_release_manifest "$PROD_ROOT/config/release.env" || die "release manifest 검증에 실패했습니다."
     [[ "$requested_version" == "$RELEASE_VERSION" ]] || die "요청 버전은 저장소 RELEASE_VERSION과 일치해야 합니다."
@@ -75,7 +81,7 @@ cleanup() {
         fi
         if [[ "$deployment_complete" != true ]]; then
             ssh "${ssh_opts[@]}" "$target" \
-                'if sudo test -s /etc/boatlab/prod/release.env; then sudo systemctl enable --now boatlab-scheduler.timer boatlab-certbot-renew.timer; fi' \
+                'mode=normal; if sudo test -s /etc/boatlab/prod/maintenance-mode; then mode="$(sudo cat /etc/boatlab/prod/maintenance-mode)"; fi; if sudo test -s /etc/boatlab/prod/release.env; then if [[ "$mode" == normal ]]; then sudo systemctl enable --now boatlab-scheduler.timer boatlab-certbot-renew.timer; else sudo systemctl enable --now boatlab-certbot-renew.timer; fi; fi' \
                 >/dev/null 2>&1
         fi
     fi
@@ -89,12 +95,13 @@ firebase_file="$runner_root/boatlab-firebase.json"
 archive_file="$runner_root/boatlab-prod.tgz"
 printf '%s\n' "$PRODUCTION_RUNTIME_ENV" > "$runtime_file"
 printf '%s\n' "$PRODUCTION_FIREBASE_JSON" > "$firebase_file"
-"$SCRIPT_DIR/validate-runtime.sh" "$runtime_file" "$firebase_file"
+"$SCRIPT_DIR/validate-runtime.sh" --mode "$MAINTENANCE_MODE" "$runtime_file" "$firebase_file"
 
 tar -C "$PROD_ROOT" -czf "$archive_file" \
     compose.yaml config/release.env nginx systemd \
-    scripts/bootstrap.sh scripts/deploy.sh scripts/renew-certificate.sh \
-    scripts/release-contract.sh scripts/run-release.sh
+    scripts/bootstrap.sh scripts/deploy.sh scripts/maintenance.sh \
+    scripts/renew-certificate.sh scripts/release-contract.sh \
+    scripts/run-release.sh scripts/validate-runtime.sh
 
 if [[ "$mode" == --validate-only ]]; then
     printf '운영 배포 입력 검증 완료\n'
@@ -119,6 +126,14 @@ ssh_ready=true
 
 ssh "${ssh_opts[@]}" "$target" \
     'command -v docker >/dev/null && sudo docker compose version >/dev/null && sudo test -d /opt/boatlab/prod && sudo test -d /etc/boatlab/prod/firebase && sudo test -d /etc/boatlab/prod/nginx && sudo test -d /etc/letsencrypt && sudo test -d /var/www/boatlab-certbot'
+
+remote_maintenance_mode="$(ssh "${ssh_opts[@]}" "$target" \
+    'if sudo test -s /etc/boatlab/prod/maintenance-mode; then sudo cat /etc/boatlab/prod/maintenance-mode; else printf "normal\n"; fi')"
+if [[ "$remote_maintenance_mode" == stage2 ]]; then
+    die "현재 운영 서버가 stage2(전면 중지) 모드이므로 배포할 수 없습니다. maintenance.sh apply normal 실행 후 다시 시도하세요."
+fi
+[[ "$remote_maintenance_mode" == "$MAINTENANCE_MODE" ]] || \
+    die "요청한 MAINTENANCE_MODE(${MAINTENANCE_MODE})가 운영 서버 현재 점검 모드(${remote_maintenance_mode})와 일치하지 않습니다."
 
 remote_stage="$(ssh "${ssh_opts[@]}" "$target" mktemp -d /tmp/boatlab-deploy.XXXXXX)"
 [[ "$remote_stage" =~ ^/tmp/boatlab-deploy\.[A-Za-z0-9]+$ ]] || die "원격 staging 경로가 올바르지 않습니다."
@@ -145,6 +160,7 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
         printf 'image_tag=%s\n' "$IMAGE_TAG"
         printf 'image_digest=%s\n' "$IMAGE_DIGEST"
         printf 'active_slot=%s\n' "$active_slot"
+        printf 'maintenance_mode=%s\n' "$MAINTENANCE_MODE"
     } >> "$GITHUB_OUTPUT"
 fi
 

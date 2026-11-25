@@ -44,6 +44,7 @@ jobs:
           done
           bash deploy/prod/tests/release-contract.sh
           bash deploy/prod/tests/deploy-state-machine.sh
+          bash deploy/prod/tests/maintenance-mode.sh
           deploy/prod/scripts/validate-release.sh
           deploy/prod/scripts/validate-release.sh --remote
           grep -Fq -- "api.boatlab.co.kr" deploy/prod/nginx/default.conf.template
@@ -201,6 +202,33 @@ jobs:
             /etc/nginx/conf.d/default.conf
           docker exec "$nginx_container" nginx -t
           docker exec "$nginx_container" nginx -s reload
+          docker rm -f "$nginx_container" >/dev/null
+          nginx_container=''
+
+          mkdir -p "$temp_dir/webroot/.well-known/acme-challenge"
+          printf 'acme-ok\n' > "$temp_dir/webroot/.well-known/acme-challenge/ping"
+
+          NGINX_TEMPLATE="$PWD/deploy/prod/nginx/default.conf.template" \
+            deploy/prod/scripts/maintenance.sh render stage1 --slot blue --output "$temp_dir/nginx/default.conf"
+          docker run --rm \
+            --add-host=backend-blue:127.0.0.1 \
+            -v "$temp_dir/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro" \
+            -v "$temp_dir/letsencrypt:/etc/letsencrypt:ro" \
+            -v "$temp_dir/webroot:/var/www/certbot:ro" \
+            nginx:1.30.3-alpine@sha256:0d3b80406a13a767339fbe2f41406d6c7da727ab89cf8fae399e81f780f814d1 nginx -t
+
+          NGINX_TEMPLATE="$PWD/deploy/prod/nginx/default.conf.template" \
+            deploy/prod/scripts/maintenance.sh render stage2 --slot none --output "$temp_dir/nginx/default.conf"
+          nginx_container="$(docker run -d \
+            -v "$temp_dir/nginx:/etc/nginx/conf.d:ro" \
+            -v "$temp_dir/letsencrypt:/etc/letsencrypt:ro" \
+            -v "$temp_dir/webroot:/var/www/certbot:ro" \
+            nginx:1.30.3-alpine@sha256:0d3b80406a13a767339fbe2f41406d6c7da727ab89cf8fae399e81f780f814d1)"
+          docker exec "$nginx_container" nginx -t
+          acme_body="$(docker exec "$nginx_container" curl -fsS -H 'Host: api.boatlab.co.kr' http://127.0.0.1/.well-known/acme-challenge/ping)"
+          test "$acme_body" = "acme-ok"
+          stage2_body="$(docker exec "$nginx_container" curl -ksS --resolve api.boatlab.co.kr:443:127.0.0.1 https://api.boatlab.co.kr/api/v1/receipts)"
+          printf '%s' "$stage2_body" | python3 -c 'import json, sys; d = json.load(sys.stdin); assert d["status"] == 503 and d["data"]["code"] == "SERVICE_UNAVAILABLE" and d["data"]["path"] == "/api/v1/receipts"'
           docker rm -f "$nginx_container" >/dev/null
           nginx_container=''
 

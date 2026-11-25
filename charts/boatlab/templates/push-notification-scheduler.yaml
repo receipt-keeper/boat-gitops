@@ -9,6 +9,7 @@ metadata:
     {{- include "boatlab.labels" . | nindent 4 }}
 spec:
   schedule: {{ .Values.pushNotificationScheduler.schedule | quote }}
+  suspend: {{ .Values.pushNotificationScheduler.suspend }}
   concurrencyPolicy: {{ .Values.pushNotificationScheduler.concurrencyPolicy }}
   successfulJobsHistoryLimit: {{ .Values.pushNotificationScheduler.successfulJobsHistoryLimit }}
   failedJobsHistoryLimit: {{ .Values.pushNotificationScheduler.failedJobsHistoryLimit }}

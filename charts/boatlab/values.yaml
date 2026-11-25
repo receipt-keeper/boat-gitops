@@ -72,6 +72,7 @@ migration:
 
 pushNotificationScheduler:
   enabled: false
+  suspend: false
   name: boatlab-push-notification-scheduler
   schedule: "*/5 * * * *"
   concurrencyPolicy: Forbid

@@ -32,9 +32,11 @@ sudo chown -R root:root "$DEPLOY_ROOT" "$CONFIG_ROOT"
 sudo chmod 0750 \
     "$DEPLOY_ROOT/scripts/bootstrap.sh" \
     "$DEPLOY_ROOT/scripts/deploy.sh" \
+    "$DEPLOY_ROOT/scripts/maintenance.sh" \
     "$DEPLOY_ROOT/scripts/release-contract.sh" \
     "$DEPLOY_ROOT/scripts/renew-certificate.sh" \
-    "$DEPLOY_ROOT/scripts/run-release.sh"
+    "$DEPLOY_ROOT/scripts/run-release.sh" \
+    "$DEPLOY_ROOT/scripts/validate-runtime.sh"
 sudo install -m 0644 "$DEPLOY_ROOT/systemd/boatlab-scheduler.service" \
     /etc/systemd/system/boatlab-scheduler.service
 sudo install -m 0644 "$DEPLOY_ROOT/systemd/boatlab-scheduler.timer" \

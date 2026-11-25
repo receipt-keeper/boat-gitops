@@ -7,6 +7,14 @@ on:
         description: "배포할 Boatlab 릴리스 버전 (예: 1.0.1)"
         required: true
         type: string
+      maintenance_mode:
+        description: "운영 서버 점검 모드 (기본: normal, 1차 선중지 유지 배포 시: stage1)"
+        required: false
+        default: normal
+        type: choice
+        options:
+          - normal
+          - stage1
 
 permissions:
   contents: read
@@ -31,6 +39,7 @@ jobs:
         shell: bash
         env:
           RELEASE_VERSION: ${{ inputs.version }}
+          MAINTENANCE_MODE: ${{ inputs.maintenance_mode || 'normal' }}
           PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
           PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
           PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
@@ -49,6 +58,7 @@ jobs:
           IMAGE_TAG: ${{ steps.deploy.outputs.image_tag }}
           IMAGE_DIGEST: ${{ steps.deploy.outputs.image_digest }}
           ACTIVE_SLOT: ${{ steps.deploy.outputs.active_slot }}
+          MAINTENANCE_MODE: ${{ steps.deploy.outputs.maintenance_mode }}
         run: |
           {
             printf '## Boatlab 운영 배포\n\n'
@@ -59,4 +69,5 @@ jobs:
             printf "| 이미지 태그 | \`%s\` |\n" "$IMAGE_TAG"
             printf "| 이미지 digest | \`%s\` |\n" "$IMAGE_DIGEST"
             printf "| 활성 슬롯 | \`%s\` |\n" "$ACTIVE_SLOT"
+            printf "| 점검 모드 | \`%s\` |\n" "$MAINTENANCE_MODE"
           } >> "$GITHUB_STEP_SUMMARY"
