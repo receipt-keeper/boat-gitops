@@ -474,6 +474,7 @@ apply_mode() (
     local previous_mode
     previous_mode="$(read_maintenance_mode)"
     local nginx_updated=false
+    local scheduler_stopped=false
     local completed=false
 
     if [[ -s "$NGINX_CONFIG_FILE" ]]; then
@@ -489,6 +490,10 @@ apply_mode() (
                 reload_or_start_nginx >/dev/null 2>&1 || true
             fi
             write_maintenance_mode "$previous_mode" >/dev/null 2>&1 || true
+            if [[ "$scheduler_stopped" == true && "$previous_mode" == normal ]]; then
+                enable_normal_timers "$skip_systemctl" >/dev/null 2>&1 || \
+                    printf '경고: 이전 scheduler timer 복구에 실패했습니다.\n' >&2
+            fi
         fi
         if [[ -n "$previous_nginx_backup" ]]; then
             rm -f "$previous_nginx_backup"
@@ -507,6 +512,7 @@ apply_mode() (
 
             printf '1차 선중지(stage1): 푸시 스케줄러 중지\n'
             stop_scheduler_units "$skip_systemctl"
+            scheduler_stopped=true
 
             if [[ "$skip_outbox_check" != true ]]; then
                 printf '1차 선중지(stage1): outbox_events 미발송분 소진 대기 (최대 60초)\n'
@@ -524,6 +530,7 @@ apply_mode() (
         stage2)
             printf '2차 전면 중지(stage2): 푸시 스케줄러 중지\n'
             stop_scheduler_units "$skip_systemctl"
+            scheduler_stopped=true
 
             printf '2차 전면 중지(stage2): 앞단 Nginx 전역 503 JSON 설정 반영\n'
             render_nginx_to_file stage2 "$active_slot" "$NGINX_CONFIG_FILE"

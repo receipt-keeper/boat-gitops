@@ -6,6 +6,8 @@ readonly SCRIPT_DIR
 readonly VALIDATE_RUNTIME_SCRIPT="${SCRIPT_DIR}/../scripts/validate-runtime.sh"
 readonly MAINTENANCE_SCRIPT="${SCRIPT_DIR}/../scripts/maintenance.sh"
 readonly DEPLOY_SCRIPT="${SCRIPT_DIR}/../scripts/deploy.sh"
+readonly GITHUB_DEPLOY_SCRIPT="${SCRIPT_DIR}/../scripts/github-deploy.sh"
+readonly REPO_RELEASE_MANIFEST="${SCRIPT_DIR}/../config/release.env"
 
 root="$(mktemp -d)"
 trap 'rm -rf "$root"' EXIT
@@ -69,6 +71,35 @@ cp "$runtime_paused" "$runtime_static_s3"
 printf 'S3_ACCESS_KEY_ID=forbidden\n' >> "$runtime_static_s3"
 if bash "$VALIDATE_RUNTIME_SCRIPT" --mode stage1 "$runtime_static_s3" "$firebase_file" >/dev/null 2>&1; then
     printf 'stage1 모드에서 정적 S3 키가 통과했습니다.\n' >&2
+    exit 1
+fi
+
+# github-deploy.sh --validate-only 점검 모드 전달 검증
+repo_version="$(awk -F= '$1 == "RELEASE_VERSION" {print $2}' "$REPO_RELEASE_MANIFEST")"
+run_github_validate() {
+    local gh_mode="$1"
+    local env_path="$2"
+    RUNNER_TEMP="$root" \
+    RELEASE_VERSION="$repo_version" \
+    MAINTENANCE_MODE="$gh_mode" \
+    PRODUCTION_HOST="prod.example.com" \
+    PRODUCTION_USER="ubuntu" \
+    PRODUCTION_SSH_PRIVATE_KEY="dummy" \
+    PRODUCTION_KNOWN_HOSTS="dummy" \
+    PRODUCTION_RUNTIME_ENV="$(< "$env_path")" \
+    PRODUCTION_FIREBASE_JSON="$(< "$firebase_file")" \
+    PRODUCTION_LETSENCRYPT_EMAIL="ops@example.com" \
+    bash "$GITHUB_DEPLOY_SCRIPT" --validate-only >/dev/null 2>&1
+}
+
+run_github_validate normal "$runtime_base"
+if run_github_validate normal "$runtime_paused"; then
+    printf 'github-deploy.sh normal 모드에서 OPENROUTER_API_KEY 공란이 통과했습니다.\n' >&2
+    exit 1
+fi
+run_github_validate stage1 "$runtime_paused"
+if run_github_validate stage2 "$runtime_paused"; then
+    printf 'github-deploy.sh에서 stage2 배포가 차단되지 않았습니다.\n' >&2
     exit 1
 fi
 
@@ -201,6 +232,40 @@ status_out="$(run_maintenance status)"
 printf '%s\n' "$status_out" | grep -q '^maintenance_mode=normal$'
 printf '%s\n' "$status_out" | grep -q '^active_slot=blue$'
 
+# normal -> stage1 전환 중 outbox 미소진 실패 시 scheduler timer가 다시 활성화되어야 한다.
+run_maintenance render normal --slot blue --output "$case_root/config/nginx/default.conf" >/dev/null
+: > "$FAKE_SYSTEMCTL_LOG"
+export FAKE_OUTBOX_PENDING="3"
+export EXPECTED_PUBLIC_MODE="stage1"
+if run_maintenance apply stage1 >/dev/null 2>&1; then
+    printf 'outbox 미소진 상태에서 stage1 전환이 성공했습니다.\n' >&2
+    exit 1
+fi
+[[ "$(run_maintenance status | awk -F= '$1 == "maintenance_mode" {print $2}')" == "normal" ]]
+grep -q 'disable --now boatlab-scheduler.timer' "$FAKE_SYSTEMCTL_LOG"
+[[ "$(tail -n 1 "$FAKE_SYSTEMCTL_LOG")" == "is-active --quiet boatlab-certbot-renew.timer" ]]
+grep -q 'enable --now boatlab-scheduler.timer boatlab-certbot-renew.timer' "$FAKE_SYSTEMCTL_LOG"
+
+# normal -> stage1 전환 중 --skip-systemctl 옵션이면 실패 복구에서도 systemctl을 호출하지 않아야 한다.
+: > "$FAKE_SYSTEMCTL_LOG"
+if run_maintenance apply stage1 --skip-systemctl >/dev/null 2>&1; then
+    printf 'outbox 미소진 상태에서 stage1 --skip-systemctl 전환이 성공했습니다.\n' >&2
+    exit 1
+fi
+[[ ! -s "$FAKE_SYSTEMCTL_LOG" ]]
+export FAKE_OUTBOX_PENDING="0"
+
+# normal -> stage1 전환 중 공개 응답 검증 실패 시 Nginx 설정, 모드, scheduler timer가 모두 normal로 복원되어야 한다.
+: > "$FAKE_SYSTEMCTL_LOG"
+export EXPECTED_PUBLIC_MODE="normal"
+if run_maintenance apply stage1 >/dev/null 2>&1; then
+    printf '공개 응답 검증 실패 상태에서 stage1 전환이 성공했습니다.\n' >&2
+    exit 1
+fi
+[[ "$(< "$case_root/config/maintenance-mode")" == "normal" ]]
+grep -q 'default "normal"; # __MAINTENANCE_MODE__' "$case_root/config/nginx/default.conf"
+grep -q 'enable --now boatlab-scheduler.timer boatlab-certbot-renew.timer' "$FAKE_SYSTEMCTL_LOG"
+
 # stage1 전환 검증
 export EXPECTED_PUBLIC_MODE="stage1"
 run_maintenance apply stage1 >/dev/null
@@ -208,6 +273,20 @@ run_maintenance apply stage1 >/dev/null
 grep -q 'default "stage1"; # __MAINTENANCE_MODE__' "$case_root/config/nginx/default.conf"
 grep -q 'server backend-blue:8000;' "$case_root/config/nginx/default.conf"
 grep -q 'disable --now boatlab-scheduler.timer' "$FAKE_SYSTEMCTL_LOG"
+
+# stage1 -> stage2 전환 실패 시에는 이전 모드가 stage1이므로 scheduler timer를 다시 켜지 않아야 한다.
+: > "$FAKE_SYSTEMCTL_LOG"
+export EXPECTED_PUBLIC_MODE="normal"
+if run_maintenance apply stage2 >/dev/null 2>&1; then
+    printf '공개 응답 검증 실패 상태에서 stage2 전환이 성공했습니다.\n' >&2
+    exit 1
+fi
+[[ "$(< "$case_root/config/maintenance-mode")" == "stage1" ]]
+grep -q 'default "stage1"; # __MAINTENANCE_MODE__' "$case_root/config/nginx/default.conf"
+if grep -q 'enable --now boatlab-scheduler.timer' "$FAKE_SYSTEMCTL_LOG"; then
+    printf 'stage1 -> stage2 실패 복구에서 scheduler timer가 잘못 활성화되었습니다.\n' >&2
+    exit 1
+fi
 
 # stage2 전환 및 백엔드 컨테이너 정지 검증
 export EXPECTED_PUBLIC_MODE="stage2"

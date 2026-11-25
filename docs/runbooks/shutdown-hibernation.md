@@ -122,6 +122,7 @@ asyncio.run(main())
    - OpenRouter 콘솔에서 운영 `OPENROUTER_API_KEY`를 비활성화(또는 한도 0 설정)합니다.
    - Google Cloud 콘솔에서 Android 테스트용으로 빌드 주입된 `VISION_API_KEY`를 비활성화합니다.
    - 운영 서버 `/etc/boatlab/prod/runtime.env`(및 GitHub `production` Environment의 `PRODUCTION_RUNTIME_ENV`)에서 `OPENROUTER_API_KEY=` 공란 또는 `PUSH_SEND_ENABLED=false`로 변경해 검증할 때는 `--mode stage1` 옵션을 사용합니다.
+   - `stage1` 전환 상태에서 변경된 `PRODUCTION_RUNTIME_ENV`로 GitHub Actions `boatlab 운영 배포`(`deploy.yml`) 수동 workflow를 실행할 때는 `workflow_dispatch` 입력의 `maintenance_mode`를 `stage1`로 선택해야 사전 런타임 검증과 원격 점검 모드 일치 검사를 통과합니다 (`stage2` 전면 중지 상태에서는 배포가 차단되며, `normal` 복구 후 배포할 때는 기본값 `normal`을 사용합니다).
 
    ```bash
    sudo /opt/boatlab/prod/scripts/validate-runtime.sh \
