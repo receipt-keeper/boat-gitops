@@ -1,3 +1,31 @@
+# 점검 모드: normal(정상 운영 기본값) | stage1(1차 선중지: 조회·로그인/갱신만 허용) | stage2(2차 전면 중지: 전역 503)
+map $uri $boatlab_maintenance_mode {
+    default "normal"; # __MAINTENANCE_MODE__
+}
+
+# JSON 응답 내 path 필드가 따옴표·역슬래시·제어문자로 깨지지 않도록 안전한 경로 문자만 통과시킨다.
+map $uri $boatlab_safe_path {
+    "~^(?<clean_req_path>/[A-Za-z0-9._~:/@-]{0,200})$" $clean_req_path;
+    default "/api";
+}
+
+# stage1(1차 선중지) 허용 대상: GET/HEAD/OPTIONS 조회·프리플라이트 및 로그인·토큰 갱신만 허용한다.
+map "$request_method:$uri" $boatlab_stage1_allowed {
+    "~^(GET|HEAD|OPTIONS):" 1;
+    "~^POST:/api/v1/auth/(login|refresh)/?$" 1;
+    default 0;
+}
+
+map "$boatlab_maintenance_mode:$boatlab_stage1_allowed" $boatlab_block_request {
+    "normal:0" 0;
+    "normal:1" 0;
+    "stage1:1" 0;
+    "stage1:0" 1;
+    "stage2:0" 1;
+    "stage2:1" 1;
+    default 0;
+}
+
 upstream boatlab_backend {
     server __BACKEND_SLOT__:8000;
     keepalive 32;
@@ -46,7 +74,28 @@ server {
     client_body_timeout 600s;
     add_header Strict-Transport-Security "max-age=31536000" always;
 
+    error_page 503 @maintenance_503;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type text/plain;
+    }
+
+    location @maintenance_503 {
+        default_type application/json;
+        charset utf-8;
+        charset_types application/json;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+        add_header Cache-Control "no-store" always;
+        return 503 '{"success":false,"status":503,"data":{"code":"SERVICE_UNAVAILABLE","message":"보트랩 서비스 일시 점검으로 현재 기능을 이용할 수 없습니다.","path":"$boatlab_safe_path","errors":[]}}\n';
+    }
+
     location / {
+        if ($boatlab_block_request = 1) {
+            return 503;
+        }
+
+        proxy_intercept_errors off;
         proxy_pass http://boatlab_backend;
         proxy_http_version 1.1;
         proxy_set_header Connection "";

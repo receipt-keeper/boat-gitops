@@ -75,7 +75,7 @@ cleanup() {
         fi
         if [[ "$deployment_complete" != true ]]; then
             ssh "${ssh_opts[@]}" "$target" \
-                'if sudo test -s /etc/boatlab/prod/release.env; then sudo systemctl enable --now boatlab-scheduler.timer boatlab-certbot-renew.timer; fi' \
+                'mode=normal; if sudo test -s /etc/boatlab/prod/maintenance-mode; then mode="$(sudo cat /etc/boatlab/prod/maintenance-mode)"; fi; if sudo test -s /etc/boatlab/prod/release.env; then if [[ "$mode" == normal ]]; then sudo systemctl enable --now boatlab-scheduler.timer boatlab-certbot-renew.timer; else sudo systemctl enable --now boatlab-certbot-renew.timer; fi; fi' \
                 >/dev/null 2>&1
         fi
     fi
@@ -89,12 +89,13 @@ firebase_file="$runner_root/boatlab-firebase.json"
 archive_file="$runner_root/boatlab-prod.tgz"
 printf '%s\n' "$PRODUCTION_RUNTIME_ENV" > "$runtime_file"
 printf '%s\n' "$PRODUCTION_FIREBASE_JSON" > "$firebase_file"
-"$SCRIPT_DIR/validate-runtime.sh" "$runtime_file" "$firebase_file"
+"$SCRIPT_DIR/validate-runtime.sh" --mode "${MAINTENANCE_MODE:-normal}" "$runtime_file" "$firebase_file"
 
 tar -C "$PROD_ROOT" -czf "$archive_file" \
     compose.yaml config/release.env nginx systemd \
-    scripts/bootstrap.sh scripts/deploy.sh scripts/renew-certificate.sh \
-    scripts/release-contract.sh scripts/run-release.sh
+    scripts/bootstrap.sh scripts/deploy.sh scripts/maintenance.sh \
+    scripts/renew-certificate.sh scripts/release-contract.sh \
+    scripts/run-release.sh scripts/validate-runtime.sh
 
 if [[ "$mode" == --validate-only ]]; then
     printf '운영 배포 입력 검증 완료\n'

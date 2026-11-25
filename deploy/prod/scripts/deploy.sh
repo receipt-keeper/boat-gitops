@@ -11,6 +11,7 @@ readonly NGINX_BOOTSTRAP_TEMPLATE="${NGINX_BOOTSTRAP_TEMPLATE:-${PROD_ROOT}/ngin
 readonly RUNTIME_ENV_FILE="${RUNTIME_ENV_FILE:-/etc/boatlab/prod/runtime.env}"
 readonly RELEASE_ENV_FILE="${RELEASE_ENV_FILE:-/etc/boatlab/prod/release.env}"
 readonly ACTIVE_SLOT_FILE="${ACTIVE_SLOT_FILE:-/etc/boatlab/prod/active-slot}"
+readonly MAINTENANCE_MODE_FILE="${MAINTENANCE_MODE_FILE:-$(dirname -- "$ACTIVE_SLOT_FILE")/maintenance-mode}"
 readonly NGINX_CONFIG_ROOT="${NGINX_CONFIG_ROOT:-/etc/boatlab/prod/nginx}"
 readonly NGINX_CONFIG_FILE="${NGINX_CONFIG_FILE:-${NGINX_CONFIG_ROOT}/default.conf}"
 readonly RELEASE_MANIFEST_FILE="${RELEASE_MANIFEST_FILE:-${PROD_ROOT}/config/release.env}"
@@ -73,6 +74,20 @@ read_active_slot() {
     esac
 }
 
+read_maintenance_mode() {
+    if [[ ! -s "$MAINTENANCE_MODE_FILE" ]]; then
+        printf 'normal\n'
+        return
+    fi
+
+    local mode
+    mode="$(< "$MAINTENANCE_MODE_FILE")"
+    case "$mode" in
+        normal|stage1|stage2) printf '%s\n' "$mode" ;;
+        *) die "maintenance-mode 파일 값이 올바르지 않습니다." ;;
+    esac
+}
+
 opposite_slot() {
     case "$1" in
         none|green) printf 'blue\n' ;;
@@ -113,10 +128,14 @@ install_nginx_config() {
 
 render_nginx_config() {
     local target_slot="$1"
+    local mode="${2:-normal}"
     local temporary_file
 
     temporary_file="$(mktemp)"
-    sed "s/__BACKEND_SLOT__/backend-${target_slot}/g" "$NGINX_TEMPLATE" > "$temporary_file"
+    sed \
+        -e "s/__BACKEND_SLOT__/backend-${target_slot}/g" \
+        -e "s/default \"normal\"; # __MAINTENANCE_MODE__/default \"${mode}\"; # __MAINTENANCE_MODE__/" \
+        "$NGINX_TEMPLATE" > "$temporary_file"
     install_nginx_config "$temporary_file"
     rm -f "$temporary_file"
 }
@@ -202,6 +221,7 @@ write_active_slot() {
 deploy_image() (
     local requested_version="$1"
     local current_slot
+    local maintenance_mode
     local target_slot
     local target_service
     local current_service
@@ -215,6 +235,11 @@ deploy_image() (
     load_release "$requested_version"
     validate_runtime_files
 
+    maintenance_mode="$(read_maintenance_mode)"
+    if [[ "$maintenance_mode" == stage2 ]]; then
+        die "현재 stage2(전면 중지) 모드입니다. 재개 배포 전 maintenance.sh apply normal을 먼저 실행하세요."
+    fi
+
     current_slot="$(read_active_slot)"
     target_slot="$(opposite_slot "$current_slot")"
     target_service="backend-${target_slot}"
@@ -226,7 +251,7 @@ deploy_image() (
 
     restore_previous_slot() {
         [[ "$current_slot" != none ]] || return 0
-        render_nginx_config "$current_slot" || return 1
+        render_nginx_config "$current_slot" "$maintenance_mode" || return 1
         validate_nginx_config || return 1
 
         local nginx_container
@@ -293,7 +318,7 @@ deploy_image() (
     wait_for_healthy "$target_service"
 
     ensure_certificate
-    render_nginx_config "$target_slot"
+    render_nginx_config "$target_slot" "$maintenance_mode"
     nginx_config_changed=true
     validate_nginx_config
     nginx_switched=true

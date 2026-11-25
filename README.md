@@ -25,10 +25,12 @@ Boatlab backend의 개발 Kubernetes 배포와 운영 서버 배포 구성을 �
 |-- deploy/prod/
 |   |-- config/                         # image tag, digest, runtime env 예시
 |   |-- nginx/                          # Nginx 설정 template
-|   |-- scripts/                        # bootstrap, 배포, 인증서 스크립트
+|   |-- scripts/                        # bootstrap, 배포, 점검 전환, 인증서 스크립트
 |   |-- systemd/                        # scheduler, 인증서 timer
-|   |-- tests/                          # 배포 상태 전환 테스트
+|   |-- tests/                          # 배포·점검 상태 전환 테스트
 |   `-- compose.yaml
+|-- docs/runbooks/
+|   `-- shutdown-hibernation.md         # 일시 중지(동면) 전환·백업·재개 런북
 |-- AGENTS.md
 |-- ARCHITECTURE.md
 |-- CONTRIBUTING.md
@@ -57,3 +59,4 @@ helm template boatlab charts/boatlab -f charts/boatlab/values-dev.yaml
 - scheduler는 systemd timer가 5분마다 one-shot 컨테이너를 실행한다.
 - Certbot 갱신은 별도 systemd timer가 매일 확인한다.
 - Secret과 Firebase 서비스 계정 JSON은 GitHub Environment에만 저장한다.
+- 서버 일시 중지(1차 선중지 `stage1` / 2차 전면 중지 `stage2` 동면)·백업·재개 절차는 `docs/runbooks/shutdown-hibernation.md`를 참고한다.
